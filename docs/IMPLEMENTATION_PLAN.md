@@ -13,7 +13,7 @@ Source of truth for scope: [SPEC.md](SPEC.md). This plan only orders the work. E
 | zod | 4.6.7 | TanStack Form takes Zod 4 directly (Standard Schema) |
 | @tanstack/react-query | 5.107.1 | + devtools |
 | @tanstack/react-form | 1.33.5 | |
-| drizzle-orm / drizzle-kit | 0.45.4 / 0.31.11 | |
+| drizzle-orm / drizzle-kit | 1.0.0-rc.5 / 1.0.0-rc.5 | Pre-release, chosen for the bundled `drizzle` agent skill. RQB v2: `defineRelations` in `server/db/relations.ts` |
 | @neondatabase/serverless | 1.2.0 | WebSocket `Pool` → `drizzle-orm/neon-serverless`, needed for transactions |
 | better-auth | 1.7.18 | Plugins: `better-auth/plugins/username`, `.../admin`, `.../access` |
 | vitest | 5.1.0 | |
@@ -25,7 +25,7 @@ Versions are pinned exactly in `package.json` (no `^`). Upgrades are a deliberat
 ## 1. Project structure
 
 ```
-src/
+(project root — the scaffold has no src/ directory; `@/*` maps to `./*`)
   app/
     (public)/               # French marketing site, SSR + cache tags
       page.tsx, services/, a-propos/, contact/, devis/, suivi/
