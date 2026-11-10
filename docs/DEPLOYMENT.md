@@ -1,5 +1,15 @@
 # Deploying to Vercel
 
+## Current setup
+
+| | Value |
+|---|---|
+| Vercel production URL | https://shalom-services-azure.vercel.app |
+| Neon project | `shalom-services` (`broad-voice-46132099`), AWS `us-east-1`, Postgres 18, created by the Vercel integration |
+| Neon branch `main` | Production (Vercel production branch; the integration manages it) |
+| Neon branch `dev` | Local development (`.env.local`) |
+| Vercel function region | `iad1` (matches `us-east-1`) |
+
 The project needs no `vercel.json`: Vercel detects Next.js and runs `npm run build`.
 
 ## What `npm run build` does on Vercel
@@ -29,6 +39,12 @@ The project needs no `vercel.json`: Vercel detects Next.js and runs `npm run bui
 | `DATABASE_URL` | All | Pooled Neon URL used by the app |
 | `DATABASE_URL_UNPOOLED` | All | Direct Neon URL used for migrations |
 | `MIGRATE_ON_PREVIEW` | Preview only, optional | `1` = run migrations on preview builds (only with a Neon branch per preview) |
+| `BETTER_AUTH_SECRET` | All, **required** | Signs sessions. Use a different `openssl rand -base64 32` value for Production and for Preview. Without it, Better Auth refuses to run in production. |
+| `BETTER_AUTH_URL` | Production | `https://shalom-services-azure.vercel.app` (or the custom domain once added). Previews fall back to their own deployment URL. |
+
+### First admin in production
+
+After the first deploy with auth, create the admin once against the production database from your machine. Pull production env into a temporary file and run the seed with it. Don't keep that file around.
 
 As features land (Better Auth, storage), their variables are added to `.env.example` and to this table.
 
