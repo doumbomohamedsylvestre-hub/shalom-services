@@ -46,7 +46,7 @@ For agent-driven migrations, prefer `npx drizzle-kit generate --name <name> --ou
 
 There is no `src/` directory. `@/*` maps to the repo root.
 
-- `app/`: routes. The plan uses route groups `(public)` for the SSR marketing site and `(dashboard)` for the client-heavy back office using TanStack Query + TanStack Form. `app/api/auth/[...all]` is the Better Auth handler. Root layout wraps everything in `TooltipProvider` + `Toaster` and sets `lang="fr"`.
+- `app/`: routes. The plan uses route groups `(public)` for the SSR marketing site and `(dashboard)` for the client-heavy back office using TanStack Query + TanStack Form. `app/api/auth/[...all]` is the Better Auth handler. Root layout wraps everything in `QueryProvider` + `TooltipProvider` + `Toaster`, sets `lang="fr"`, PWA metadata and the viewport (safe areas, theme colors).
 - `server/`: server-only code.
   - `server/db/client.ts`: Neon **WebSocket Pool** driver (`drizzle-orm/neon-serverless`). It was chosen over `neon-http` because stock and money operations need interactive transactions. The client throws at import if `DATABASE_URL` is unset.
   - `server/db/schema/*.ts`: tables, all re-exported from `schema/index.ts`, which is what `drizzle.config.ts` reads.
@@ -56,6 +56,35 @@ There is no `src/` directory. `@/*` maps to the repo root.
 - `scripts/`:
   - `migrate-on-deploy.mjs` runs inside `npm run build`. It migrates only on Vercel: always in production, and in preview only if `MIGRATE_ON_PREVIEW=1`.
   - `seed.ts` runs via `tsx`. It imports server modules dynamically *after* `loadEnvConfig`, because the db client reads env at import time.
+
+## Front end (built, NOT yet integrated with the backend)
+
+The whole UI runs on an in-memory demo store, so it can be integrated by swapping one layer:
+- **Routes:**
+  - `app/(public)`: French site with Accueil, `services`, `a-propos`, `contact`, `devis` and `suivi`.
+  - `app/connexion`: login page.
+  - `app/(dashboard)/tableau-de-bord/*`: the back office.
+  - `app/impression/*`: print layouts (80mm `ticket`/`recu`, A4 `devis`/`facture`).
+- **Data flow:** screens → `client/hooks/index.ts` (TanStack Query hooks; mutations go through `useAppMutation`, which shows the French toast and invalidates `client/query-keys.ts` roots) → `client/api.ts` → `client/mock/data.ts`. **Integration = rewrite the bodies in `client/api.ts`** to call the route handlers through `client/http.ts`. Signatures, hooks and screens stay as they are. Only `client/api.ts` may import the mock store.
+- **Public pages** read data through `lib/public-content.ts` (`"use cache"` + `cacheTag("settings" | "services")`). When the backend lands, point these at the service layer and call `revalidateTag` on admin edits.
+- **Demo session:** `client/session.tsx` (`useSession()` → `{ user, can }`). `can()` already uses the real permission map. The role switcher in the sidebar footer and the login form are demo-only. Replace the provider body with `authClient.useSession()` and add the server-side redirect in the dashboard layout.
+- **Shared contracts:**
+  - `shared/domain/types.ts`: domain types matching SPEC §3.
+  - `shared/domain/labels.ts`: French labels and status tones.
+  - `shared/domain/repair-flow.ts`: allowed status transitions; the service layer must enforce the same table.
+  - `shared/domain/money.ts`: totals and balance.
+  - `shared/schemas/*`: Zod form schemas, reusable on the server.
+  - `shared/format.ts`: XOF, dates and phone formatting.
+- **Forms:** `components/form/form.tsx` (`useAppForm` + field components on shadcn `Field`). Errors show inline; outcomes show as toasts.
+- **Pickers:**
+  - Lists that grow (products, customers, suppliers, anything from the database) use `SearchSelect` (`components/search-select.tsx`), or `f.SearchSelectField` inside forms. On desktop it's a popover with search; on phones it's a bottom sheet. Search is accent-insensitive and matches SKU/phone through `keywords`.
+  - Short fixed lists (payment method, role, brand, product type, ≤ ~8 options) keep `Select` / `f.SelectField`.
+  - For other Command lists, pass `filter={searchFilter}`.
+- **Next 16 prerender rules (`cacheComponents`):**
+  - Never read `Date`/`Date.now()` in render; use `useNow()` (`client/use-now.ts`) or `useIsClient()`.
+  - Client hooks reading the URL (`useSearchParams`, `usePathname` in dynamic routes) need a `<Suspense>` boundary. The dashboard layout already wraps everything in one.
+- **Layout:** responsive grids start with `grid-cols-1` (`minmax(0,1fr)`). Without it, long truncated rows overflow on phones.
+- **Demo-only bits to remove at integration:** the "Démo" tracking autofill (`components/site/tracking.tsx`), the login hint, the role switcher, and the placeholder phone numbers in `client/mock/data.ts` settings.
 
 ## Design: premium, Apple-inspired
 

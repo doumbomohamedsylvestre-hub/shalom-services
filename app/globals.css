@@ -35,6 +35,13 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-quart: cubic-bezier(0.77, 0, 0.175, 1);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -49,38 +56,45 @@
 }
 
 :root {
+  /* Shalom Service brand: navy #07274d, deep navy #061b38, orange #ff7900 */
   --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --foreground: oklch(0.21 0.03 257);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.21 0.03 257);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.21 0.03 257);
+  --primary: oklch(0.274 0.079 255.3);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --brand: oklch(0.722 0.19 50.2);
+  --brand-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.967 0.004 255);
+  --secondary-foreground: oklch(0.274 0.079 255.3);
+  --muted: oklch(0.973 0.003 255);
+  --muted-foreground: oklch(0.52 0.02 257);
+  --accent: oklch(0.955 0.012 255);
+  --accent-foreground: oklch(0.274 0.079 255.3);
+  --destructive: oklch(0.577 0.215 27.3);
+  --success: oklch(0.6 0.14 152);
+  --warning: oklch(0.75 0.15 75);
+  --info: oklch(0.58 0.14 250);
+  --border: oklch(0.92 0.006 257);
+  --input: oklch(0.9 0.008 257);
+  --ring: oklch(0.55 0.1 255);
+  /* Chart series: brand-derived, validated with the dataviz palette checker (light) */
+  --chart-1: #3567b5;
+  --chart-2: #e86f00;
+  --chart-3: oklch(0.58 0.11 250);
+  --chart-4: oklch(0.82 0.11 60);
+  --chart-5: oklch(0.75 0.03 257);
+  --radius: 0.875rem;
+  --sidebar: oklch(0.98 0.003 255);
+  --sidebar-foreground: oklch(0.21 0.03 257);
+  --sidebar-primary: oklch(0.274 0.079 255.3);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-accent: oklch(0.945 0.01 255);
+  --sidebar-accent-foreground: oklch(0.274 0.079 255.3);
+  --sidebar-border: oklch(0.92 0.006 257);
+  --sidebar-ring: oklch(0.55 0.1 255);
 }
 
 .dark {
@@ -115,6 +129,11 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --brand: oklch(0.75 0.17 52);
+  --brand-foreground: oklch(0.2 0.03 257);
+  --success: oklch(0.7 0.14 152);
+  --warning: oklch(0.8 0.14 80);
+  --info: oklch(0.7 0.12 250);
 }
 
 @layer base {
@@ -126,5 +145,74 @@
   }
   html {
     @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    scroll-behavior: smooth;
+  }
+  /* Apple-style tracking: tighten as type grows */
+  h1, h2, h3 {
+    @apply font-heading tracking-tight text-balance;
+  }
+  p {
+    @apply text-pretty;
+  }
+  button, a, [role="button"] {
+    touch-action: manipulation;
+  }
+  /* iOS zooms into inputs under 16px: keep them at 16px on touch devices */
+  @media (pointer: coarse) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *, *::before, *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+    }
+  }
+}
+
+@utility container-page {
+  @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
+}
+
+/* Translucent chrome (navigation bars) with a solid fallback */
+@utility glass {
+  background-color: color-mix(in oklch, var(--background) 72%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: var(--background);
+    backdrop-filter: none;
+  }
+}
+
+/* Small uppercase label above section titles */
+@utility eyebrow {
+  @apply text-xs font-semibold tracking-[0.14em] text-brand uppercase;
+}
+
+/* Print: only the printable document */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+/* Horizontal swipe areas (tab bars, chip rows) without a visible scrollbar */
+@utility scroll-x-hidden {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  &::-webkit-scrollbar {
+    display: none;
   }
 }
