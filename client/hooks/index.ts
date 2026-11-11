@@ -81,17 +81,19 @@ export const useCustomer = (id: string) => useQuery({ queryKey: qk.customers.det
 export const useSaveCustomer = () =>
   useAppMutation({
     fn: (v: { input: Parameters<typeof api.saveCustomer>[0]; id?: string }) => api.saveCustomer(v.input, v.id),
-    invalidate: [qk.customers.all, qk.repairs.all],
+    invalidate: [qk.customers.all, qk.repairs.all, qk.sales.all],
     success: (_c, v) => (v.id ? "Client mis à jour." : "Client ajouté."),
   });
 
 // ── Inventory
 export const useProducts = () => useQuery({ queryKey: qk.products.all, queryFn: api.listProducts });
 export const useProductCategories = () => useQuery({ queryKey: qk.products.categories, queryFn: api.listProductCategories });
+export const useCreateProductCategory = () =>
+  useAppMutation({ fn: api.createProductCategory, invalidate: [qk.products.categories, qk.audit], success: "Catégorie ajoutée." });
 export const useSaveProduct = () =>
   useAppMutation({
     fn: (v: { input: Parameters<typeof api.saveProduct>[0]; id?: string }) => api.saveProduct(v.input, v.id),
-    invalidate: [qk.products.all],
+    invalidate: [qk.products.all, qk.summary, qk.audit],
     success: (_p, v) => (v.id ? "Produit mis à jour." : "Produit ajouté."),
   });
 export const useAdjustStock = () =>
@@ -99,7 +101,7 @@ export const useAdjustStock = () =>
 export const useReceiveStock = () =>
   useAppMutation({
     fn: api.receiveStock,
-    invalidate: [qk.products.all, qk.movements.all, qk.suppliers, qk.summary],
+    invalidate: [qk.products.all, qk.movements.all, qk.suppliers, qk.summary, qk.reports.all, qk.audit],
     success: "Réception enregistrée, stock et coûts mis à jour.",
   });
 export const useMovements = (productId?: string) =>
@@ -118,21 +120,22 @@ export const useSale = (id: string) => useQuery({ queryKey: qk.sales.detail(id),
 export const useCreateSale = () =>
   useAppMutation({
     fn: api.createSale,
-    invalidate: [qk.sales.all, qk.products.all, qk.movements.all, qk.summary, qk.reports.all],
+    invalidate: [qk.sales.all, qk.products.all, qk.movements.all, qk.summary, qk.reports.all, qk.customers.all, qk.audit],
     success: (s) => `Vente ${s.number} enregistrée.`,
   });
 export const useVoidSale = () =>
   useAppMutation({
     fn: (v: { id: string; reason: string }) => api.voidSale(v.id, v.reason),
-    invalidate: [qk.sales.all, qk.products.all, qk.movements.all, qk.summary, qk.reports.all, qk.audit],
+    invalidate: [qk.sales.all, qk.products.all, qk.movements.all, qk.summary, qk.reports.all, qk.customers.all, qk.audit],
     success: "Vente annulée, stock remis à jour.",
   });
 
 // ── Expenses
-export const useExpenses = () => useQuery({ queryKey: qk.expenses.all, queryFn: api.listExpenses });
+export const useExpenses = (opts?: { enabled?: boolean }) =>
+  useQuery({ queryKey: qk.expenses.all, queryFn: api.listExpenses, enabled: opts?.enabled });
 export const useExpenseCategories = () => useQuery({ queryKey: qk.expenses.categories, queryFn: api.listExpenseCategories });
 export const useCreateExpense = () =>
-  useAppMutation({ fn: api.createExpense, invalidate: [qk.expenses.all, qk.reports.all], success: "Dépense enregistrée." });
+  useAppMutation({ fn: api.createExpense, invalidate: [qk.expenses.all, qk.reports.all, qk.audit], success: "Dépense enregistrée." });
 export const useVoidExpense = () =>
   useAppMutation({
     fn: (v: { id: string; reason: string }) => api.voidExpense(v.id, v.reason),
@@ -140,7 +143,7 @@ export const useVoidExpense = () =>
     success: "Dépense annulée.",
   });
 export const useCreateExpenseCategory = () =>
-  useAppMutation({ fn: api.createExpenseCategory, invalidate: [qk.expenses.categories], success: "Catégorie ajoutée." });
+  useAppMutation({ fn: api.createExpenseCategory, invalidate: [qk.expenses.categories, qk.audit], success: "Catégorie ajoutée." });
 
 // ── Inquiries
 export const useInquiries = () => useQuery({ queryKey: qk.inquiries, queryFn: api.listInquiries });
@@ -174,11 +177,11 @@ export const useResetStaffPassword = () =>
     success: "Mot de passe réinitialisé.",
   });
 export const useSaveSettings = () =>
-  useAppMutation({ fn: api.saveSettings, invalidate: [qk.settings], success: "Paramètres enregistrés." });
+  useAppMutation({ fn: api.saveSettings, invalidate: [qk.settings, qk.audit], success: "Paramètres enregistrés." });
 export const useSaveService = () =>
   useAppMutation({
     fn: (v: { input: Parameters<typeof api.saveService>[0]; id?: string }) => api.saveService(v.input, v.id),
-    invalidate: [qk.services.all],
+    invalidate: [qk.services.all, qk.audit],
     success: (_s, v) => (v.id ? "Prestation mise à jour." : "Prestation ajoutée."),
   });
 export const useAudit = () => useQuery({ queryKey: qk.audit, queryFn: api.listAudit });

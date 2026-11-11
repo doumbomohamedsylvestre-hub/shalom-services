@@ -22,7 +22,7 @@ import { expenseSchema, type ExpenseInput } from "@/shared/schemas/staff";
 export default function ExpensesPage() {
   const { can } = useSession();
   const canSeeAll = can({ expense: ["read"] });
-  const expenses = useExpenses();
+  const expenses = useExpenses({ enabled: canSeeAll });
   const voidExpense = useVoidExpense();
   const target = useTarget<string>();
   const [open, setOpen] = useState(false);

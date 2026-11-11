@@ -13,7 +13,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { FieldDescription, FieldGroup, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCreateExpenseCategory, useExpenseCategories, useSaveService, useSaveSettings, useServices, useSettings } from "@/client/hooks";
+import {
+  useCreateExpenseCategory,
+  useCreateProductCategory,
+  useExpenseCategories,
+  useProductCategories,
+  useSaveService,
+  useSaveSettings,
+  useServices,
+  useSettings,
+} from "@/client/hooks";
 import { useSession } from "@/client/session";
 import type { Service, ShopSettings } from "@/shared/domain/types";
 import { serviceSchema, settingsSchema, type ServiceInput, type SettingsInput } from "@/shared/schemas/staff";
@@ -23,11 +32,12 @@ export default function SettingsPage() {
   if (!can({ settings: ["update"] })) return <EmptyState icon={LockIcon} title="Accès réservé" description="Les paramètres sont réservés à l'administrateur." />;
   return (
     <>
-      <PageHeader title="Paramètres" description="Informations de la boutique, prestations affichées sur le site et catégories de dépenses." />
+      <PageHeader title="Paramètres" description="Informations de la boutique, prestations affichées sur le site, catégories de produits et de dépenses." />
       <Tabs defaultValue="boutique">
         <TabsList>
           <TabsTrigger value="boutique">Boutique</TabsTrigger>
           <TabsTrigger value="prestations">Prestations</TabsTrigger>
+          <TabsTrigger value="stock">Stock</TabsTrigger>
           <TabsTrigger value="depenses">Dépenses</TabsTrigger>
         </TabsList>
         <TabsContent value="boutique" className="mt-6">
@@ -35,6 +45,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="prestations" className="mt-6">
           <ServicesTab />
+        </TabsContent>
+        <TabsContent value="stock" className="mt-6">
+          <ProductCategoriesTab />
         </TabsContent>
         <TabsContent value="depenses" className="mt-6">
           <ExpenseCategoriesTab />
@@ -265,33 +278,91 @@ function ServiceDialog({ service, open, onOpenChange }: { service?: Service; ope
   );
 }
 
+function ProductCategoriesTab() {
+  const categories = useProductCategories();
+  const create = useCreateProductCategory();
+  return (
+    <CategoriesCard
+      title="Catégories de produits"
+      description="Utilisées pour ranger le stock et filtrer la caisse."
+      names={categories.data}
+      loading={categories.isLoading}
+      error={categories.isError}
+      onRetry={() => categories.refetch()}
+      pending={create.isPending}
+      onCreate={(name, done) => create.mutate(name, { onSuccess: done })}
+    />
+  );
+}
+
 function ExpenseCategoriesTab() {
   const categories = useExpenseCategories();
   const create = useCreateExpenseCategory();
+  return (
+    <CategoriesCard
+      title="Catégories de dépenses"
+      description="Utilisées pour classer les dépenses dans les rapports."
+      names={categories.data?.map((c) => c.name)}
+      loading={categories.isLoading}
+      error={categories.isError}
+      onRetry={() => categories.refetch()}
+      pending={create.isPending}
+      onCreate={(name, done) => create.mutate(name, { onSuccess: done })}
+    />
+  );
+}
+
+function CategoriesCard({
+  title,
+  description,
+  names,
+  loading,
+  error,
+  onRetry,
+  pending,
+  onCreate,
+}: {
+  title: string;
+  description: string;
+  names?: string[];
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+  pending: boolean;
+  onCreate: (name: string, done: () => void) => void;
+}) {
   const [name, setName] = useState("");
   return (
     <Card className="max-w-xl rounded-2xl">
       <CardHeader>
-        <CardTitle>Catégories de dépenses</CardTitle>
-        <CardDescription>Utilisées pour classer les dépenses dans les rapports.</CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <ul className="flex flex-wrap gap-2">
-          {(categories.data ?? []).map((c) => (
-            <li key={c.id} className="rounded-full bg-muted px-3 py-1.5 text-sm">
-              {c.name}
-            </li>
-          ))}
-        </ul>
+        {loading ? (
+          <ListSkeleton rows={2} />
+        ) : error ? (
+          <ErrorState onRetry={onRetry} />
+        ) : names?.length ? (
+          <ul className="flex flex-wrap gap-2">
+            {names.map((n) => (
+              <li key={n} className="max-w-full truncate rounded-full bg-muted px-3 py-1.5 text-sm">
+                {n}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">Aucune catégorie pour l&apos;instant.</p>
+        )}
         <form
           className="flex gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            if (name.trim()) create.mutate(name.trim(), { onSuccess: () => setName("") });
+            if (name.trim()) onCreate(name.trim(), () => setName(""));
           }}
         >
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nouvelle catégorie" aria-label="Nouvelle catégorie" />
-          <Button type="submit" variant="outline" disabled={!name.trim() || create.isPending}>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nouvelle catégorie" aria-label="Nouvelle catégorie" maxLength={60} />
+          <Button type="submit" variant="outline" disabled={!name.trim() || pending}>
             Ajouter
           </Button>
         </form>

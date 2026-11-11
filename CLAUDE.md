@@ -22,7 +22,7 @@ npx tsc --noEmit -p .  # typecheck (no script for it)
 
 npm run db:generate    # drizzle-kit generate -> drizzle/<UTC timestamp>_<name>/migration.sql
 npm run db:migrate     # apply migrations to DATABASE_URL_UNPOOLED from .env.local
-npm run db:seed        # idempotent: branch row + first admin (SEED_ADMIN_* env)
+npm run db:seed        # idempotent: branch, first admin, settings, services, categories (+ SEED_STAFF_PASSWORD / SEED_SAMPLE_CATALOG=1 dev samples)
 npm run db:studio
 ```
 
@@ -51,13 +51,14 @@ There is no `src/` directory. `@/*` maps to the repo root.
   - `server/db/client.ts`: Neon **WebSocket Pool** driver (`drizzle-orm/neon-serverless`). It was chosen over `neon-http` because stock and money operations need interactive transactions. The client throws at import if `DATABASE_URL` is unset.
   - `server/db/schema/*.ts`: tables, all re-exported from `schema/index.ts`, which is what `drizzle.config.ts` reads.
   - `server/auth/auth.ts`: Better Auth config. Settings: Drizzle adapter, `emailAndPassword` with **sign-up disabled**, username login, admin plugin (roles, banning = deactivation, which revokes sessions), and rate limits stored in Postgres (memory storage is useless on serverless). `nextCookies()` must stay the last plugin.
-  - Planned: `server/services/*` is the only place for business logic and authorization. Each service function takes the session, checks permissions, validates with the shared Zod schema, runs in a transaction, and writes `audit_log` for money/stock changes. Route handlers and pages call services and never touch `db` directly.
+  - `server/services/*` is the only place for business logic and authorization. Each service function takes the session, checks permissions (`assertCan`), validates with the shared Zod schema, runs in a transaction, and writes `audit_log` (`_shared.ts` → `audit()`) for money/stock/settings/staff changes. Route handlers under `app/api/*` only call `requireSession()` + a service inside `handle()`; pages never touch `db`.
+  - Stock changes go through `moveStock()` (`inventory.ts`): ledger row + `qty_on_hand` in one transaction, guarded so stock never goes below 0; lock rows first with `lockProducts()`. Sale prices come from the catalogue, never the client; a lower price is a discount (recorded with who gave it). Sale numbers come from `document_counters` (gap-free).
 - `shared/`: code imported by both server and client. `shared/auth/permissions.ts` is the **single role → permission map** (admin / reception / technician plus domain statements such as `repair:claim` and `payment:void`). It drives the admin plugin, the client (`lib/auth-client.ts`), and later `assertCan`. Change permissions here only.
 - `scripts/`:
   - `migrate-on-deploy.mjs` runs inside `npm run build`. It migrates only on Vercel: always in production, and in preview only if `MIGRATE_ON_PREVIEW=1`.
   - `seed.ts` runs via `tsx`. It imports server modules dynamically *after* `loadEnvConfig`, because the db client reads env at import time.
 
-## Front end (built, NOT yet integrated with the backend)
+## Front end (partly integrated)
 
 The whole UI runs on an in-memory demo store, so it can be integrated by swapping one layer:
 - **Routes:**
@@ -65,8 +66,8 @@ The whole UI runs on an in-memory demo store, so it can be integrated by swappin
   - `app/connexion`: login page.
   - `app/(dashboard)/tableau-de-bord/*`: the back office.
   - `app/impression/*`: print layouts (80mm `ticket`/`recu`, A4 `devis`/`facture`).
-- **Data flow:** screens → `client/hooks/index.ts` (TanStack Query hooks; mutations go through `useAppMutation`, which shows the French toast and invalidates `client/query-keys.ts` roots) → `client/api.ts` → `client/mock/data.ts`. **Integration = rewrite the bodies in `client/api.ts`** to call the route handlers through `client/http.ts`. Signatures, hooks and screens stay as they are. Only `client/api.ts` may import the mock store.
-- **Public pages** read data through `lib/public-content.ts` (`"use cache"` + `cacheTag("settings" | "services")`). When the backend lands, point these at the service layer and call `revalidateTag` on admin edits.
+- **Data flow:** screens → `client/hooks/index.ts` (TanStack Query hooks; mutations go through `useAppMutation`, which shows the French toast and invalidates `client/query-keys.ts` roots) → `client/api.ts` → `client/http.ts` → `app/api/*` for the **live** modules (staff, settings + services, customers, stock, suppliers, sales, expenses, audit log, dashboard boutique figures), or `client/mock/data.ts` for the **still-demo** ones (repairs, inquiries, public tracking, reports). **Integration = rewrite the bodies in `client/api.ts`** to call the route handlers through `client/http.ts`. Signatures, hooks and screens stay as they are. Only `client/api.ts` may import the mock store.
+- **Public pages** read data through `lib/public-content.ts` (`"use cache"` + `cacheTag("settings" | "services")`), straight from `server/services/settings.ts`. Admin edits call `revalidateTag(tag, { expire: 0 })`.
 - **Auth (live, integrated):**
   - `proxy.ts` does an optimistic cookie check on `/tableau-de-bord` and `/impression` (→ `/connexion?next=…`). The real check is `requireStaffPage()` in the dashboard and print layouts, and `requireSession()` + `assertCan()` in every API handler (`server/auth/session.ts`).
   - Login: `authClient.signIn.username` (`app/connexion`). Sign-out and "Changer mon mot de passe" live in the sidebar account menu.
