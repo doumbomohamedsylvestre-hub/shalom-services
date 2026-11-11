@@ -1,0 +1,2366 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "cdba3344-c07a-438a-8fd3-4f889d94d3c6",
+  "prevIds": [
+    "f5dac83a-c92a-4423-a3da-4f3e1df0b436"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "inquiries"
+      ],
+      "writes": [
+        "s|tbl|public.inquiries",
+        "n|tbl|public.inquiries",
+        "e|tbl|public.inquiries",
+        "n|rel|public.inquiries",
+        "n|type|public.inquiries",
+        "n|rel|public.inquiries_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "public_rate_limits"
+      ],
+      "writes": [
+        "s|tbl|public.public_rate_limits",
+        "n|tbl|public.public_rate_limits",
+        "e|tbl|public.public_rate_limits",
+        "n|rel|public.public_rate_limits",
+        "n|type|public.public_rate_limits",
+        "n|rel|public.public_rate_limits_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "repair_lines"
+      ],
+      "writes": [
+        "s|tbl|public.repair_lines",
+        "n|tbl|public.repair_lines",
+        "e|tbl|public.repair_lines",
+        "n|rel|public.repair_lines",
+        "n|type|public.repair_lines",
+        "n|rel|public.repair_lines_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "repair_status_events"
+      ],
+      "writes": [
+        "s|tbl|public.repair_status_events",
+        "n|tbl|public.repair_status_events",
+        "e|tbl|public.repair_status_events",
+        "n|rel|public.repair_status_events",
+        "n|type|public.repair_status_events",
+        "n|rel|public.repair_status_events_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "repairs"
+      ],
+      "writes": [
+        "s|tbl|public.repairs",
+        "n|tbl|public.repairs",
+        "e|tbl|public.repairs",
+        "n|rel|public.repairs",
+        "n|type|public.repairs",
+        "n|rel|public.repairs_pkey",
+        "n|rel|public.repairs_code_key",
+        "n|rel|public.repairs_invoice_number_key"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "payments",
+        "repair_id"
+      ],
+      "writes": [
+        "s|col|public.payments.repair_id",
+        "n|col|public.payments.repair_id",
+        "e|col|public.payments.repair_id"
+      ],
+      "reads": [
+        "n|tbl|public.payments",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "stock_movements",
+        "repair_id"
+      ],
+      "writes": [
+        "s|col|public.stock_movements.repair_id",
+        "n|col|public.stock_movements.repair_id",
+        "e|col|public.stock_movements.repair_id"
+      ],
+      "reads": [
+        "n|tbl|public.stock_movements",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "payments",
+        "payments_repair_idx"
+      ],
+      "writes": [
+        "s|idx|public.payments_repair_idx",
+        "n|idx|public.payments_repair_idx",
+        "e|idx|public.payments_repair_idx",
+        "n|rel|public.payments_repair_idx"
+      ],
+      "reads": [
+        "n|tbl|public.payments",
+        "n|sch|public",
+        "n|col|public.payments.repair_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "inquiries",
+        "inquiries_created_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.inquiries_created_at_idx",
+        "n|idx|public.inquiries_created_at_idx",
+        "e|idx|public.inquiries_created_at_idx",
+        "n|rel|public.inquiries_created_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.inquiries",
+        "n|sch|public",
+        "n|col|public.inquiries.created_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "repair_lines",
+        "repair_lines_repair_idx"
+      ],
+      "writes": [
+        "s|idx|public.repair_lines_repair_idx",
+        "n|idx|public.repair_lines_repair_idx",
+        "e|idx|public.repair_lines_repair_idx",
+        "n|rel|public.repair_lines_repair_idx"
+      ],
+      "reads": [
+        "n|tbl|public.repair_lines",
+        "n|sch|public",
+        "n|col|public.repair_lines.repair_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "repair_status_events",
+        "repair_status_events_repair_idx"
+      ],
+      "writes": [
+        "s|idx|public.repair_status_events_repair_idx",
+        "n|idx|public.repair_status_events_repair_idx",
+        "e|idx|public.repair_status_events_repair_idx",
+        "n|rel|public.repair_status_events_repair_idx"
+      ],
+      "reads": [
+        "n|tbl|public.repair_status_events",
+        "n|sch|public",
+        "n|col|public.repair_status_events.repair_id",
+        "n|col|public.repair_status_events.at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "repairs",
+        "repairs_status_idx"
+      ],
+      "writes": [
+        "s|idx|public.repairs_status_idx",
+        "n|idx|public.repairs_status_idx",
+        "e|idx|public.repairs_status_idx",
+        "n|rel|public.repairs_status_idx"
+      ],
+      "reads": [
+        "n|tbl|public.repairs",
+        "n|sch|public",
+        "n|col|public.repairs.status"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "repairs",
+        "repairs_customer_idx"
+      ],
+      "writes": [
+        "s|idx|public.repairs_customer_idx",
+        "n|idx|public.repairs_customer_idx",
+        "e|idx|public.repairs_customer_idx",
+        "n|rel|public.repairs_customer_idx"
+      ],
+      "reads": [
+        "n|tbl|public.repairs",
+        "n|sch|public",
+        "n|col|public.repairs.customer_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "repairs",
+        "repairs_technician_idx"
+      ],
+      "writes": [
+        "s|idx|public.repairs_technician_idx",
+        "n|idx|public.repairs_technician_idx",
+        "e|idx|public.repairs_technician_idx",
+        "n|rel|public.repairs_technician_idx"
+      ],
+      "reads": [
+        "n|tbl|public.repairs",
+        "n|sch|public",
+        "n|col|public.repairs.technician_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "repairs",
+        "repairs_updated_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.repairs_updated_at_idx",
+        "n|idx|public.repairs_updated_at_idx",
+        "e|idx|public.repairs_updated_at_idx",
+        "n|rel|public.repairs_updated_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.repairs",
+        "n|sch|public",
+        "n|col|public.repairs.updated_at"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "payments"
+      ],
+      "writes": [
+        "s|fk|public.payments.payments_repair_id_repairs_id_fkey",
+        "n|fk|public.payments.payments_repair_id_repairs_id_fkey",
+        "e|fk|public.payments.payments_repair_id_repairs_id_fkey",
+        "n|con|public.payments.payments_repair_id_repairs_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.payments",
+        "n|sch|public",
+        "n|tbl|public.repairs",
+        "n|sch|public",
+        "n|col|public.payments.repair_id",
+        "n|col|public.repairs.id",
+        "e|uniqueness|public.repairs.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "stock_movements"
+      ],
+      "writes": [
+        "s|fk|public.stock_movements.stock_movements_repair_id_repairs_id_fkey",
+        "n|fk|public.stock_movements.stock_movements_repair_id_repairs_id_fkey",
+        "e|fk|public.stock_movements.stock_movements_repair_id_repairs_id_fkey",
+        "n|con|public.stock_movements.stock_movements_repair_id_repairs_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.stock_movements",
+        "n|sch|public",
+        "n|tbl|public.repairs",
+        "n|sch|public",
+        "n|col|public.stock_movements.repair_id",
+        "n|col|public.repairs.id",
+        "e|uniqueness|public.repairs.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "inquiries"
+      ],
+      "writes": [
+        "s|fk|public.inquiries.inquiries_converted_repair_id_repairs_id_fkey",
+        "n|fk|public.inquiries.inquiries_converted_repair_id_repairs_id_fkey",
+        "e|fk|public.inquiries.inquiries_converted_repair_id_repairs_id_fkey",
+        "n|con|public.inquiries.inquiries_converted_repair_id_repairs_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.inquiries",
+        "n|sch|public",
+        "n|tbl|public.repairs",
+        "n|sch|public",
+        "n|col|public.inquiries.converted_repair_id",
+        "n|col|public.repairs.id",
+        "e|uniqueness|public.repairs.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "inquiries"
+      ],
+      "writes": [
+        "s|fk|public.inquiries.inquiries_updated_by_user_id_fkey",
+        "n|fk|public.inquiries.inquiries_updated_by_user_id_fkey",
+        "e|fk|public.inquiries.inquiries_updated_by_user_id_fkey",
+        "n|con|public.inquiries.inquiries_updated_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.inquiries",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.inquiries.updated_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "repair_lines"
+      ],
+      "writes": [
+        "s|fk|public.repair_lines.repair_lines_repair_id_repairs_id_fkey",
+        "n|fk|public.repair_lines.repair_lines_repair_id_repairs_id_fkey",
+        "e|fk|public.repair_lines.repair_lines_repair_id_repairs_id_fkey",
+        "n|con|public.repair_lines.repair_lines_repair_id_repairs_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.repair_lines",
+        "n|sch|public",
+        "n|tbl|public.repairs",
+        "n|sch|public",
+        "n|col|public.repair_lines.repair_id",
+        "n|col|public.repairs.id",
+        "e|uniqueness|public.repairs.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "repair_lines"
+      ],
+      "writes": [
+        "s|fk|public.repair_lines.repair_lines_product_id_products_id_fkey",
+        "n|fk|public.repair_lines.repair_lines_product_id_products_id_fkey",
+        "e|fk|public.repair_lines.repair_lines_product_id_products_id_fkey",
+        "n|con|public.repair_lines.repair_lines_product_id_products_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.repair_lines",
+        "n|sch|public",
+        "n|tbl|public.products",
+        "n|sch|public",
+        "n|col|public.repair_lines.product_id",
+        "n|col|public.products.id",
+        "e|uniqueness|public.products.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "repair_lines"
+      ],
+      "writes": [
+        "s|fk|public.repair_lines.repair_lines_service_id_services_id_fkey",
+        "n|fk|public.repair_lines.repair_lines_service_id_services_id_fkey",
+        "e|fk|public.repair_lines.repair_lines_service_id_services_id_fkey",
+        "n|con|public.repair_lines.repair_lines_service_id_services_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.repair_lines",
+        "n|sch|public",
+        "n|tbl|public.services",
+        "n|sch|public",
+        "n|col|public.repair_lines.service_id",
+        "n|col|public.services.id",
+        "e|uniqueness|public.services.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "repair_lines"
+      ],
+      "writes": [
+        "s|fk|public.repair_lines.repair_lines_discount_by_user_id_fkey",
+        "n|fk|public.repair_lines.repair_lines_discount_by_user_id_fkey",
+        "e|fk|public.repair_lines.repair_lines_discount_by_user_id_fkey",
+        "n|con|public.repair_lines.repair_lines_discount_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.repair_lines",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.repair_lines.discount_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "repair_lines"
+      ],
+      "writes": [
+        "s|fk|public.repair_lines.repair_lines_created_by_user_id_fkey",
+        "n|fk|public.repair_lines.repair_lines_created_by_user_id_fkey",
+        "e|fk|public.repair_lines.repair_lines_created_by_user_id_fkey",
+        "n|con|public.repair_lines.repair_lines_created_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.repair_lines",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.repair_lines.created_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "repair_lines"
+      ],
+      "writes": [
+        "s|fk|public.repair_lines.repair_lines_removed_by_user_id_fkey",
+        "n|fk|public.repair_lines.repair_lines_removed_by_user_id_fkey",
+        "e|fk|public.repair_lines.repair_lines_removed_by_user_id_fkey",
+        "n|con|public.repair_lines.repair_lines_removed_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.repair_lines",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.repair_lines.removed_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "repair_status_events"
+      ],
+      "writes": [
+        "s|fk|public.repair_status_events.repair_status_events_repair_id_repairs_id_fkey",
+        "n|fk|public.repair_status_events.repair_status_events_repair_id_repairs_id_fkey",
+        "e|fk|public.repair_status_events.repair_status_events_repair_id_repairs_id_fkey",
+        "n|con|public.repair_status_events.repair_status_events_repair_id_repairs_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.repair_status_events",
+        "n|sch|public",
+        "n|tbl|public.repairs",
+        "n|sch|public",
+        "n|col|public.repair_status_events.repair_id",
+        "n|col|public.repairs.id",
+        "e|uniqueness|public.repairs.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "repair_status_events"
+      ],
+      "writes": [
+        "s|fk|public.repair_status_events.repair_status_events_by_user_id_fkey",
+        "n|fk|public.repair_status_events.repair_status_events_by_user_id_fkey",
+        "e|fk|public.repair_status_events.repair_status_events_by_user_id_fkey",
+        "n|con|public.repair_status_events.repair_status_events_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.repair_status_events",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.repair_status_events.by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "repairs"
+      ],
+      "writes": [
+        "s|fk|public.repairs.repairs_branch_id_branches_id_fkey",
+        "n|fk|public.repairs.repairs_branch_id_branches_id_fkey",
+        "e|fk|public.repairs.repairs_branch_id_branches_id_fkey",
+        "n|con|public.repairs.repairs_branch_id_branches_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.repairs",
+        "n|sch|public",
+        "n|tbl|public.branches",
+        "n|sch|public",
+        "n|col|public.repairs.branch_id",
+        "n|col|public.branches.id",
+        "e|uniqueness|public.branches.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "repairs"
+      ],
+      "writes": [
+        "s|fk|public.repairs.repairs_customer_id_customers_id_fkey",
+        "n|fk|public.repairs.repairs_customer_id_customers_id_fkey",
+        "e|fk|public.repairs.repairs_customer_id_customers_id_fkey",
+        "n|con|public.repairs.repairs_customer_id_customers_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.repairs",
+        "n|sch|public",
+        "n|tbl|public.customers",
+        "n|sch|public",
+        "n|col|public.repairs.customer_id",
+        "n|col|public.customers.id",
+        "e|uniqueness|public.customers.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "repairs"
+      ],
+      "writes": [
+        "s|fk|public.repairs.repairs_technician_id_user_id_fkey",
+        "n|fk|public.repairs.repairs_technician_id_user_id_fkey",
+        "e|fk|public.repairs.repairs_technician_id_user_id_fkey",
+        "n|con|public.repairs.repairs_technician_id_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.repairs",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.repairs.technician_id",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "repairs"
+      ],
+      "writes": [
+        "s|fk|public.repairs.repairs_created_by_user_id_fkey",
+        "n|fk|public.repairs.repairs_created_by_user_id_fkey",
+        "e|fk|public.repairs.repairs_created_by_user_id_fkey",
+        "n|con|public.repairs.repairs_created_by_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.repairs",
+        "n|sch|public",
+        "n|tbl|public.user",
+        "n|sch|public",
+        "n|col|public.repairs.created_by",
+        "n|col|public.user.id",
+        "e|uniqueness|public.user.id"
+      ]
+    },
+    {
+      "statementType": "add_check",
+      "statementTarget": [
+        "table",
+        "public",
+        "payments"
+      ],
+      "writes": [
+        "s|ck|public.payments.payments_one_owner",
+        "n|ck|public.payments.payments_one_owner",
+        "e|ck|public.payments.payments_one_owner",
+        "n|con|public.payments.payments_one_owner"
+      ],
+      "reads": [
+        "n|tbl|public.payments",
+        "n|sch|public",
+        "n|col|public.payments.sale_id",
+        "n|col|public.payments.repair_id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "inquiries",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "public_rate_limits",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "repair_lines",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "repair_status_events",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "repairs",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "payments",
+        "name": "repair_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "stock_movements",
+        "name": "repair_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "type",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "phone",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "device",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "message",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'new'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "converted_repair_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "updated_by",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "public_rate_limits",
+        "name": "key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "public_rate_limits",
+        "name": "window_start",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "public_rate_limits",
+        "name": "count",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "repair_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "kind",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "product_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "service_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "label",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "qty",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "unit_price",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "unit_cost",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "discount",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "discount_by",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "created_by",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "removed_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "removed_by",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_status_events",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_status_events",
+        "name": "repair_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_status_events",
+        "name": "from_status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_status_events",
+        "name": "to_status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_status_events",
+        "name": "note",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_status_events",
+        "name": "at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_status_events",
+        "name": "by",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "branch_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "code",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "customer_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "brand",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "model",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "color",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "imei",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "fault",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "condition_notes",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "accessories",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "diagnosis",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "mode",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'received'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "technician_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "estimated_ready_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "invoice_number",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "picked_up_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "created_by",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "payments",
+        "name": "payments_repair_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "repair_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "inquiries_created_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "created_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "repair_lines_repair_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "repair_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_status_events",
+        "name": "repair_status_events_repair_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "repair_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "repairs_status_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "status",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "repairs_customer_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "customer_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "repairs_technician_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "technician_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "repairs_updated_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "updated_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "payments",
+        "name": "payments_repair_id_repairs_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "repair_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "repairs",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "stock_movements",
+        "name": "stock_movements_repair_id_repairs_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "repair_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "repairs",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "inquiries_converted_repair_id_repairs_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "converted_repair_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "repairs",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "inquiries_updated_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "updated_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "repair_lines_repair_id_repairs_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "repair_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "repairs",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "repair_lines_product_id_products_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "product_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "products",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "repair_lines_service_id_services_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "service_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "services",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "repair_lines_discount_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "discount_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "repair_lines_created_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "created_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "repair_lines_removed_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "removed_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_status_events",
+        "name": "repair_status_events_repair_id_repairs_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "repair_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "repairs",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_status_events",
+        "name": "repair_status_events_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "repairs_branch_id_branches_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "branch_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "branches",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "repairs_customer_id_customers_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "customer_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "customers",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "repairs_technician_id_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "technician_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "repairs_created_by_user_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "created_by"
+        ],
+        "schemaTo": "public",
+        "tableTo": "user",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "SET NULL",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "inquiries_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "public_rate_limits",
+        "name": "public_rate_limits_pkey",
+        "columns": [
+          "key"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "repair_lines_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_status_events",
+        "name": "repair_status_events_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "repairs_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "repairs_code_key",
+        "nameExplicit": false,
+        "columns": [
+          "code"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "repairs_invoice_number_key",
+        "nameExplicit": false,
+        "columns": [
+          "invoice_number"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "payments",
+        "name": "payments_one_owner",
+        "value": "(\"sale_id\" is null) <> (\"repair_id\" is null)",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "inquiries_type",
+        "value": "\"type\" in ('repair', 'quote', 'contact')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inquiries",
+        "name": "inquiries_status",
+        "value": "\"status\" in ('new', 'contacted', 'converted', 'closed')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "repair_lines_kind",
+        "value": "\"kind\" in ('service', 'product')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repair_lines",
+        "name": "repair_lines_amounts",
+        "value": "\"qty\" > 0 and \"unit_price\" >= 0 and \"discount\" >= 0 and \"discount\" <= \"qty\" * \"unit_price\"",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "repairs_mode",
+        "value": "\"mode\" in ('fixed', 'quote')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "repairs",
+        "name": "repairs_status",
+        "value": "\"status\" in ('received', 'diagnosing', 'quote_sent', 'approved', 'refused', 'in_repair', 'waiting_parts', 'ready', 'picked_up', 'unrepairable', 'returned_unrepaired', 'cancelled')",
+        "entityType": "checks"
+      }
+    }
+  ]
+}

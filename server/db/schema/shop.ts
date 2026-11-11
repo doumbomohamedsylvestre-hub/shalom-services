@@ -13,30 +13,11 @@ import {
   pgTable,
   primaryKey,
   text,
-  timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
-import { branches } from "./branches";
-
-const tstz = (name: string) => timestamp(name, { withTimezone: true });
-const createdAt = () => tstz("created_at").defaultNow().notNull();
-const updatedAt = () =>
-  tstz("updated_at")
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull();
-/** Staff member who created the row (null for seeded rows). */
-const createdBy = () => text("created_by").references(() => user.id, { onDelete: "set null" });
-const branchId = () =>
-  uuid("branch_id")
-    .notNull()
-    .references(() => branches.id);
-const voidColumns = () => ({
-  voidedAt: tstz("voided_at"),
-  voidedBy: text("voided_by").references(() => user.id, { onDelete: "set null" }),
-  voidReason: text("void_reason"),
-});
+import { branchId, createdAt, createdBy, tstz, updatedAt, voidColumns } from "./_columns";
+import { repairs } from "./atelier";
 
 export type OpeningHours = { days: string; open: string; close: string }[];
 
@@ -227,13 +208,14 @@ export const saleLines = pgTable(
   ],
 );
 
-/** Repair payments get a nullable repair_id column in the repairs phase. */
+/** A payment belongs to exactly one sale or one repair. */
 export const payments = pgTable(
   "payments",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     branchId: branchId(),
     saleId: uuid("sale_id").references(() => sales.id),
+    repairId: uuid("repair_id").references(() => repairs.id),
     amount: integer("amount").notNull(),
     method: text("method").$type<"cash" | "orange_money" | "moov_money" | "bank">().notNull(),
     kind: text("kind").$type<"deposit" | "payment">().notNull(),
@@ -244,7 +226,9 @@ export const payments = pgTable(
   (t) => [
     check("payments_amount_positive", sql`${t.amount} > 0`),
     check("payments_method", sql`${t.method} in ('cash', 'orange_money', 'moov_money', 'bank')`),
+    check("payments_one_owner", sql`(${t.saleId} is null) <> (${t.repairId} is null)`),
     index("payments_sale_idx").on(t.saleId),
+    index("payments_repair_idx").on(t.repairId),
     index("payments_created_at_idx").on(t.createdAt),
   ],
 );
@@ -266,6 +250,7 @@ export const stockMovements = pgTable(
     reason: text("reason"),
     receiptId: uuid("receipt_id").references(() => stockReceipts.id),
     saleId: uuid("sale_id").references(() => sales.id),
+    repairId: uuid("repair_id").references(() => repairs.id),
     createdAt: createdAt(),
     createdBy: createdBy(),
   },

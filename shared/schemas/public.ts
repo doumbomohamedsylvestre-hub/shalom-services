@@ -1,8 +1,12 @@
 import { z } from "zod";
 import { maliPhone, optionalText, requiredText } from "./common";
 
-/** Hidden honeypot field: must stay empty (SPEC assumption 4). */
-const honeypot = z.string().max(0).optional();
+/**
+ * Hidden honeypot field (SPEC assumption 4). Accepted by validation on
+ * purpose: the server answers a filled one with a fake success and stores
+ * nothing, so bots get no signal.
+ */
+const honeypot = z.string().max(500).optional();
 
 export const inquirySchema = z.object({
   type: z.enum(["repair", "quote", "contact"]),

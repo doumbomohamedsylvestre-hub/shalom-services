@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FieldGroup } from "@/components/ui/field";
 import { RepairStatusBadge } from "@/components/status-badge";
-import { getTrackingExample } from "@/client/api";
 import { useTrackRepair } from "@/client/hooks";
 import { cn } from "@/lib/utils";
 import { formatDate, formatDateTime } from "@/shared/format";
@@ -62,18 +61,6 @@ export function Tracking() {
                 Voir l&apos;avancement
               </form.SubmitButton>
             </form.AppForm>
-            {/* DEMO ONLY: remove when the backend is integrated. */}
-            <button
-              type="button"
-              className="text-xs text-muted-foreground underline-offset-4 hover:underline"
-              onClick={async () => {
-                const ex = await getTrackingExample();
-                form.setFieldValue("code", ex.code);
-                form.setFieldValue("phone", ex.phone.slice(4));
-              }}
-            >
-              Démo : remplir avec un ticket existant
-            </button>
           </FieldGroup>
         </form>
       </CardContent>

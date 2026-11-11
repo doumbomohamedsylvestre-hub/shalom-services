@@ -120,6 +120,8 @@ export type Repair = {
   payments: Payment[];
   events: RepairStatusEvent[];
   estimatedReadyAt?: ISODate;
+  /** Sequential invoice number, assigned when the device is picked up. */
+  invoiceNumber?: string;
   createdAt: ISODate;
   updatedAt: ISODate;
 };

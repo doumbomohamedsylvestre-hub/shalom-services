@@ -18,7 +18,7 @@ export default function InvoicePrint() {
     <PrintFrame format="a4" ready={!!r && !!s}>
       {r && s && (
         <div className="flex flex-col gap-8">
-          <ShopHeaderA4 settings={s} title="Facture" number={`${s.prefixes.invoice}-${r.code.slice(3)}`} date={formatDate(r.updatedAt)} />
+          <ShopHeaderA4 settings={s} title="Facture" number={r.invoiceNumber ?? `Proforma ${r.code}`} date={formatDate(r.updatedAt)} />
           <div className="grid grid-cols-2 gap-8">
             <div>
               <p className="text-xs text-neutral-500 uppercase">Facturé à</p>

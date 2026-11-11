@@ -20,12 +20,16 @@ export const useSubmitInquiry = () =>
 export const useDashboardSummary = () => useQuery({ queryKey: qk.summary, queryFn: api.getDashboardSummary });
 
 // ── Repairs
-const repairKeys = [qk.repairs.all, qk.summary, qk.customers.all];
+const repairKeys = [qk.repairs.all, qk.summary, qk.customers.all, qk.audit];
 export const useRepairs = (f: RepairFilters) => useQuery({ queryKey: qk.repairs.list(f), queryFn: () => api.listRepairs(f) });
 export const useRepair = (id: string) => useQuery({ queryKey: qk.repairs.detail(id), queryFn: () => api.getRepair(id) });
 
 export const useCreateRepair = () =>
-  useAppMutation({ fn: api.createRepair, invalidate: repairKeys, success: (r) => `Ticket ${r.code} créé.` });
+  useAppMutation({
+    fn: api.createRepair,
+    invalidate: [...repairKeys, qk.products.all, qk.movements.all, qk.reports.all],
+    success: (r) => `Ticket ${r.code} créé.`,
+  });
 export const useClaimRepair = () =>
   useAppMutation({
     fn: (v: { id: string; technician: { id: string; name: string } }) => api.claimRepair(v.id, v.technician),
@@ -53,13 +57,13 @@ export const useUpdateDiagnosis = () =>
 export const useAddRepairLine = () =>
   useAppMutation({
     fn: (v: { id: string; line: Parameters<typeof api.addRepairLine>[1] }) => api.addRepairLine(v.id, v.line),
-    invalidate: [qk.repairs.all, qk.products.all, qk.movements.all],
+    invalidate: [qk.repairs.all, qk.products.all, qk.movements.all, qk.summary, qk.reports.all, qk.audit],
     success: "Ligne ajoutée.",
   });
 export const useRemoveRepairLine = () =>
   useAppMutation({
     fn: (v: { id: string; lineId: string }) => api.removeRepairLine(v.id, v.lineId),
-    invalidate: [qk.repairs.all, qk.products.all, qk.movements.all],
+    invalidate: [qk.repairs.all, qk.products.all, qk.movements.all, qk.summary, qk.reports.all, qk.audit],
     success: "Ligne retirée.",
   });
 export const useRecordRepairPayment = () =>

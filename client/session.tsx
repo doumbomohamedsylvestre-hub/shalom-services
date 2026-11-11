@@ -9,8 +9,7 @@
  * `assertCan`; it only hides UI, the API enforces it again.
  */
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo } from "react";
-import { setMockActor } from "@/client/api";
+import { createContext, useCallback, useContext, useMemo } from "react";
 import { authClient } from "@/lib/auth-client";
 import { roles } from "@/shared/auth/permissions";
 import type { StaffUser } from "@/shared/domain/types";
@@ -28,7 +27,6 @@ const SessionContext = createContext<SessionValue | null>(null);
 
 export function SessionProvider({ user, children }: { user: StaffUser; children: React.ReactNode }) {
   const router = useRouter();
-  useEffect(() => setMockActor(user.name), [user.name]);
 
   const signOut = useCallback(async () => {
     const { error } = await authClient.signOut();
