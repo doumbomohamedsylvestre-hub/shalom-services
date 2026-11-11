@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { LinesTableA4, PrintFrame, ShopHeaderA4, TotalRow } from "@/components/print/print-kit";
+import { LinesTableA4, PrintFrame, ShopHeaderA4, TotalRow, TaxNote } from "@/components/print/print-kit";
 import { useRepair, useSettings } from "@/client/hooks";
 import { linesTotal } from "@/shared/domain/money";
 import { formatDate, formatPhone } from "@/shared/format";
@@ -41,7 +41,7 @@ export default function QuotePrint() {
           <LinesTableA4 lines={r.lines} />
           <div className="ml-auto flex w-72 flex-col gap-1.5">
             <TotalRow label="Total TTC" value={linesTotal(r.lines)} strong />
-            <p className="text-right text-xs text-neutral-500">TVA non applicable</p>
+            <TaxNote total={linesTotal(r.lines)} rate={s.taxRate} />
           </div>
           <p className="text-xs text-neutral-600">
             Devis valable 15 jours. La réparation démarre après votre accord. Le solde est réglé à la récupération de l&apos;appareil.

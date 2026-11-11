@@ -108,6 +108,8 @@ export const productSchema = z.object({
   category: requiredText("La catégorie", 60),
   salePrice: amountXOF("Le prix de vente"),
   minQty: z.number().int().min(0, "Minimum : 0."),
+  /** Off = retiré de la vente: hidden from the till and new receipts, history kept. */
+  active: z.boolean(),
 });
 export type ProductInput = z.infer<typeof productSchema>;
 
@@ -178,8 +180,14 @@ export const serviceSchema = z.object({
   durationLabel: optionalText(40),
   isPublic: z.boolean(),
   active: z.boolean(),
+  /** Bundled asset path or uploaded image URL; empty keeps the current image. */
+  image: z.string().trim().max(500).optional(),
 });
 export type ServiceInput = z.infer<typeof serviceSchema>;
+
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+const PREFIX = /^[A-Z0-9]{1,5}$/;
+const optionalHttpsUrl = z.union([z.literal(""), z.url({ protocol: /^https$/, error: "Adresse https:// invalide." })]);
 
 export const settingsSchema = z.object({
   name: requiredText("Le nom", 80),
@@ -191,5 +199,22 @@ export const settingsSchema = z.object({
   terms: optionalText(2000),
   quoteReady: requiredText("Le message", 500),
   repairReady: requiredText("Le message", 500),
+  hours: z
+    .array(
+      z
+        .object({
+          days: requiredText("Les jours", 40),
+          open: z.string().regex(TIME, "Heure invalide."),
+          close: z.string().regex(TIME, "Heure invalide."),
+        })
+        .refine((h) => h.open < h.close, { message: "La fermeture doit suivre l'ouverture.", path: ["close"] }),
+    )
+    .min(1, "Au moins une plage d'ouverture.")
+    .max(7, "7 plages au maximum."),
+  mapUrl: optionalHttpsUrl,
+  mapEmbedUrl: optionalHttpsUrl,
+  taxRate: z.number({ error: "Le taux doit être un nombre." }).int("Nombre entier.").min(0, "Minimum 0 %.").max(100, "Maximum 100 %."),
+  salePrefix: z.string().trim().toUpperCase().regex(PREFIX, "1 à 5 lettres ou chiffres."),
+  invoicePrefix: z.string().trim().toUpperCase().regex(PREFIX, "1 à 5 lettres ou chiffres."),
 });
 export type SettingsInput = z.infer<typeof settingsSchema>;

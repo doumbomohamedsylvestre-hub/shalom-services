@@ -3,7 +3,7 @@
  * recalculated on each receipt, a movement ledger written in the same
  * transaction as qty_on_hand, and stock that never goes below zero.
  */
-import { and, asc, count, desc, eq, inArray, max, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, max, ne, sql } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import {
   productCategories,
@@ -16,7 +16,7 @@ import {
 } from "@/server/db/schema";
 import { AppError, notFound } from "@/server/errors";
 import { assertCan, can, type StaffSession } from "@/server/auth/session";
-import type { Product, StockMovement, StockMovementType, Supplier } from "@/shared/domain/types";
+import type { Product, StockMovement, StockMovementType, StockReceipt, Supplier } from "@/shared/domain/types";
 import {
   productSchema,
   stockAdjustmentSchema,
@@ -26,8 +26,11 @@ import {
   type StockAdjustmentInput,
   type StockReceiptInput,
   type SupplierInput,
+  voidSchema,
 } from "@/shared/schemas/staff";
+import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
+import { weightedAverageCost } from "@/shared/domain/stock";
 import { audit, currentBranchId, isUniqueViolation, orUndef, type Tx } from "./_shared";
 
 // ───────────────────────────── Products & categories ─────────────────────────────
@@ -114,10 +117,19 @@ export async function saveProduct(session: StaffSession, input: ProductInput, id
   try {
     const savedId = await db.transaction(async (tx) => {
       const categoryId = await categoryIdByName(tx, v.category);
-      const fields = { sku, name: v.name, kind: v.kind, categoryId, salePrice: v.salePrice, minQty: v.minQty };
+      const fields = { sku, name: v.name, kind: v.kind, categoryId, salePrice: v.salePrice, minQty: v.minQty, active: v.active };
       if (id) {
         const before = await getProduct(tx, id);
         await tx.update(productsTable).set(fields).where(eq(productsTable.id, id));
+        if (before.active !== v.active) {
+          await audit(tx, session, {
+            action: "update",
+            entity: "Produit",
+            entityId: id,
+            entityRef: sku,
+            summary: v.active ? "Produit remis en vente." : "Produit retiré de la vente.",
+          });
+        }
         if (before.salePrice !== v.salePrice) {
           await audit(tx, session, {
             action: "update",
@@ -198,12 +210,6 @@ export async function moveStock(tx: Tx, session: StaffSession, m: MovementInput)
   });
 }
 
-/** Weighted average cost after receiving `qty` units at `unitCost` (SPEC §2.6). */
-export function weightedAverageCost(qtyOnHand: number, avgCost: number, qty: number, unitCost: number) {
-  const total = qtyOnHand + qty;
-  if (total <= 0) return unitCost;
-  return Math.round((Math.max(0, qtyOnHand) * avgCost + qty * unitCost) / total);
-}
 
 export async function adjustStock(session: StaffSession, input: StockAdjustmentInput): Promise<Product> {
   assertCan(session, { inventory: ["adjust"] });
@@ -235,7 +241,11 @@ export async function receiveStock(session: StaffSession, input: StockReceiptInp
     const [supplier] = await tx.select({ id: suppliersTable.id, name: suppliersTable.name }).from(suppliersTable).where(eq(suppliersTable.id, v.supplierId)).limit(1);
     if (!supplier) throw notFound("Fournisseur");
     const locked = await lockProducts(tx, v.lines.map((l) => l.productId));
-    for (const l of v.lines) if (!locked.get(l.productId)) throw notFound("Produit");
+    for (const l of v.lines) {
+      const p = locked.get(l.productId);
+      if (!p) throw notFound("Produit");
+      if (!p.active) throw new AppError("INACTIVE_PRODUCT", `${p.name} est retiré de la vente : réactivez-le avant de le réceptionner.`, 409);
+    }
 
     const totalCost = v.lines.reduce((s, l) => s + l.qty * l.unitCost, 0);
     const [receipt] = await tx
@@ -315,6 +325,78 @@ export async function listMovements(session: StaffSession, productId?: string): 
   }));
 }
 
+// ───────────────────────────── Receipts ─────────────────────────────
+
+const receiver = alias(user, "receiver");
+const receiptVoider = alias(user, "receipt_voider");
+
+export async function listReceipts(session: StaffSession): Promise<StockReceipt[]> {
+  assertCan(session, { inventory: ["receive"] });
+  const heads = await db
+    .select({ r: stockReceipts, supplierName: suppliersTable.name, by: receiver.name, voidedBy: receiptVoider.name })
+    .from(stockReceipts)
+    .innerJoin(suppliersTable, eq(suppliersTable.id, stockReceipts.supplierId))
+    .leftJoin(receiver, eq(receiver.id, stockReceipts.createdBy))
+    .leftJoin(receiptVoider, eq(receiptVoider.id, stockReceipts.voidedBy))
+    .orderBy(desc(stockReceipts.createdAt))
+    .limit(200);
+  if (!heads.length) return [];
+  const lines = await db
+    .select({ receiptId: stockReceiptLines.receiptId, productId: stockReceiptLines.productId, productName: productsTable.name, qty: stockReceiptLines.qty, unitCost: stockReceiptLines.unitCost })
+    .from(stockReceiptLines)
+    .innerJoin(productsTable, eq(productsTable.id, stockReceiptLines.productId))
+    .where(inArray(stockReceiptLines.receiptId, heads.map((h) => h.r.id)));
+  // Whoever can receive stock entered these costs, so they may see them.
+  return heads.map(({ r, supplierName, by, voidedBy }) => ({
+    id: r.id,
+    supplier: { id: r.supplierId, name: supplierName },
+    lines: lines
+      .filter((l) => l.receiptId === r.id)
+      .map((l) => ({ productId: l.productId, productName: l.productName, qty: l.qty, unitCost: l.unitCost })),
+    totalCost: r.totalCost,
+    amountPaid: r.amountPaid,
+    note: orUndef(r.note),
+    by: by ?? "—",
+    at: r.createdAt.toISOString(),
+    ...(r.voidedAt && { voided: { at: r.voidedAt.toISOString(), by: voidedBy ?? "—", reason: r.voidReason ?? "" } }),
+  }));
+}
+
+/**
+ * Admin only. Takes the received units back out at the current average cost,
+ * without recalculating history (SPEC risks). Refused if some of them were
+ * already sold or used: stock never goes below zero.
+ */
+export async function voidReceipt(session: StaffSession, id: string, input: { reason: string }): Promise<StockReceipt> {
+  assertCan(session, { inventory: ["adjust"] });
+  const { reason } = voidSchema.parse(input);
+  if (!z.uuid().safeParse(id).success) throw notFound("Réception");
+  await db.transaction(async (tx) => {
+    const [r] = await tx.select().from(stockReceipts).where(eq(stockReceipts.id, id)).for("update").limit(1);
+    if (!r) throw notFound("Réception");
+    if (r.voidedAt) throw new AppError("ALREADY_VOIDED", "Cette réception est déjà annulée.", 409);
+    const lines = await tx.select().from(stockReceiptLines).where(eq(stockReceiptLines.receiptId, id));
+    const locked = await lockProducts(tx, lines.map((l) => l.productId));
+    const need = new Map<string, number>();
+    for (const l of lines) need.set(l.productId, (need.get(l.productId) ?? 0) + l.qty);
+    for (const [productId, qty] of need) {
+      const p = locked.get(productId)!;
+      if (p.qtyOnHand < qty) {
+        throw new AppError("STOCK_ALREADY_USED", `Impossible : ${p.name} n'a plus que ${p.qtyOnHand} en stock sur ${qty} reçus. Faites plutôt un ajustement.`, 409);
+      }
+    }
+    for (const [productId, qty] of need) {
+      const p = locked.get(productId)!;
+      await moveStock(tx, session, { productId, type: "void", qtyDelta: -qty, unitCost: p.avgCost, ref: "Réception annulée", reason, receiptId: id });
+    }
+    await tx.update(stockReceipts).set({ voidedAt: new Date(), voidedBy: session.user.id, voidReason: reason }).where(eq(stockReceipts.id, id));
+    await audit(tx, session, { action: "void", entity: "Réception", entityId: id, entityRef: r.totalCost.toString(), summary: `Réception de ${r.totalCost} FCFA annulée : ${reason}` });
+  });
+  const saved = (await listReceipts(session)).find((x) => x.id === id);
+  if (!saved) throw notFound("Réception");
+  return saved;
+}
+
 // ───────────────────────────── Suppliers ─────────────────────────────
 
 export async function listSuppliers(session: StaffSession): Promise<Supplier[]> {
@@ -322,6 +404,7 @@ export async function listSuppliers(session: StaffSession): Promise<Supplier[]> 
   const stats = db
     .select({ supplierId: stockReceipts.supplierId, n: count().as("n"), last: max(stockReceipts.createdAt).as("last") })
     .from(stockReceipts)
+    .where(isNull(stockReceipts.voidedAt))
     .groupBy(stockReceipts.supplierId)
     .as("stats");
   const rows = await db

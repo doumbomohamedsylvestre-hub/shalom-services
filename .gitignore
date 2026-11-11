@@ -43,3 +43,9 @@ next-env.d.ts
 
 # Local notes with credentials (never commit)
 *.local.md
+
+# Playwright
+/.next-e2e/
+/test-results/
+/playwright-report/
+/tests/e2e/.auth/

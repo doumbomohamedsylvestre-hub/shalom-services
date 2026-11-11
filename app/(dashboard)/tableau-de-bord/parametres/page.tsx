@@ -1,8 +1,10 @@
 "use client";
 
-import { EyeIcon, EyeOffIcon, LockIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, ImageUpIcon, LoaderCircleIcon, LockIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useId, useState } from "react";
+import { toast } from "sonner";
+import { uploadServiceImage } from "@/client/api";
 import { onFormSubmit, useAppForm } from "@/components/form/form";
 import { EmptyState, ErrorState, ListSkeleton, Money } from "@/components/dashboard/kit";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -77,7 +79,13 @@ function ShopSettingsForm({ settings }: { settings: ShopSettings }) {
       terms: settings.terms,
       quoteReady: settings.whatsappTemplates.quoteReady,
       repairReady: settings.whatsappTemplates.repairReady,
-    } as SettingsInput,
+      hours: settings.hours.length ? settings.hours : [{ days: "Lundi – Samedi", open: "08:00", close: "20:00" }],
+      mapUrl: settings.mapUrl ?? "",
+      mapEmbedUrl: settings.mapEmbedUrl ?? "",
+      taxRate: settings.taxRate,
+      salePrefix: settings.prefixes.sale,
+      invoicePrefix: settings.prefixes.invoice,
+    } satisfies SettingsInput,
     validators: { onSubmit: settingsSchema },
     onSubmit: async ({ value }) => {
       await save.mutateAsync(value);
@@ -126,6 +134,82 @@ function ShopSettingsForm({ settings }: { settings: ShopSettings }) {
               <form.AppField name="email">{(f) => <f.TextField label="E-mail (facultatif)" type="email" />}</form.AppField>
             </div>
           </FieldGroup>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <CardTitle>Horaires et plan</CardTitle>
+          <CardDescription>Affichés sur l&apos;accueil, la page Contact et le pied de page du site.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <FieldSet>
+              <FieldLegend variant="label">Horaires d&apos;ouverture</FieldLegend>
+              <form.Field name="hours" mode="array">
+                {(hours) => (
+                  <div className="flex flex-col gap-3">
+                    {hours.state.value.map((_, i) => (
+                      <div key={i} className="grid grid-cols-[1fr_auto] items-start gap-2 sm:grid-cols-[1fr_8rem_8rem_auto]">
+                        <form.AppField name={`hours[${i}].days`}>
+                          {(f) => <f.TextField label={`Jours, plage ${i + 1}`} hideLabel placeholder="Lundi – Samedi" className="col-span-1" />}
+                        </form.AppField>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Retirer la plage ${i + 1}`}
+                          className="sm:order-last"
+                          disabled={hours.state.value.length === 1}
+                          onClick={() => hours.removeValue(i)}
+                        >
+                          <TrashIcon />
+                        </Button>
+                        <div className="col-span-2 grid grid-cols-2 gap-2 sm:col-span-1 sm:contents">
+                          <form.AppField name={`hours[${i}].open`}>{(f) => <f.TextField label={`Ouverture, plage ${i + 1}`} hideLabel type="time" />}</form.AppField>
+                          <form.AppField name={`hours[${i}].close`}>{(f) => <f.TextField label={`Fermeture, plage ${i + 1}`} hideLabel type="time" />}</form.AppField>
+                        </div>
+                      </div>
+                    ))}
+                    {hours.state.value.length < 7 && (
+                      <Button type="button" variant="outline" className="w-fit" onClick={() => hours.pushValue({ days: "", open: "08:00", close: "18:00" })}>
+                        <PlusIcon data-icon="inline-start" />
+                        Ajouter une plage
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </form.Field>
+            </FieldSet>
+            <form.AppField name="mapUrl">
+              {(f) => <f.TextField label="Lien Google Maps" type="url" inputMode="url" placeholder="https://maps.google.com/?q=…" description="Bouton « Itinéraire » de la page Contact." />}
+            </form.AppField>
+            <form.AppField name="mapEmbedUrl">
+              {(f) => (
+                <f.TextField
+                  label="Carte intégrée (lien d'intégration)"
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://www.google.com/maps?q=…&output=embed"
+                  description="Google Maps › Partager › Intégrer une carte, puis copiez l'adresse du « src »."
+                />
+              )}
+            </form.AppField>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <CardTitle>Documents</CardTitle>
+          <CardDescription>Numérotation des ventes et des factures, et taux de TVA (0 % tant que le comptable n&apos;a pas confirmé).</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <form.AppField name="salePrefix">{(f) => <f.TextField label="Préfixe des ventes" description="Ex. V → V-00012" autoCapitalize="characters" />}</form.AppField>
+            <form.AppField name="invoicePrefix">{(f) => <f.TextField label="Préfixe des factures" description="Ex. F → F-00012" autoCapitalize="characters" />}</form.AppField>
+            <form.AppField name="taxRate">{(f) => <f.NumberField label="TVA" suffix="%" />}</form.AppField>
+          </div>
         </CardContent>
       </Card>
 
@@ -230,6 +314,7 @@ function ServiceDialog({ service, open, onOpenChange }: { service?: Service; ope
     durationLabel: service?.durationLabel ?? "",
     isPublic: service?.isPublic ?? true,
     active: service?.active ?? true,
+    image: "",
   };
   const form = useAppForm({
     defaultValues: initial,
@@ -251,8 +336,11 @@ function ServiceDialog({ service, open, onOpenChange }: { service?: Service; ope
         <form onSubmit={onFormSubmit(form)} noValidate className="flex flex-col gap-5">
           <DialogHeader>
             <DialogTitle>{service ? "Modifier la prestation" : "Nouvelle prestation"}</DialogTitle>
-            <DialogDescription>L&apos;image se change une fois le stockage de fichiers branché.</DialogDescription>
+            <DialogDescription>Visible sur le site public et dans les devis.</DialogDescription>
           </DialogHeader>
+          <form.Field name="image">
+            {(f) => <ServiceImagePicker value={f.state.value || service?.image || "/assets/services/service-precision-repair.webp"} onChange={f.handleChange} />}
+          </form.Field>
           <FieldGroup>
             <form.AppField name="name">{(f) => <f.TextField label="Nom" />}</form.AppField>
             <form.AppField name="summary">{(f) => <f.TextareaField label="Résumé (carte)" rows={2} />}</form.AppField>
@@ -275,6 +363,42 @@ function ServiceDialog({ service, open, onOpenChange }: { service?: Service; ope
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Card image with an in-place "change" control; the photo is compressed and uploaded at once. */
+function ServiceImagePicker({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const inputId = useId();
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    const local = URL.createObjectURL(file);
+    setPreview(local);
+    setUploading(true);
+    try {
+      onChange(await uploadServiceImage(file));
+      toast.success("Image envoyée. Enregistrez pour l'appliquer.");
+    } catch (e) {
+      setPreview(null);
+      toast.error(e instanceof Error ? e.message : "L'envoi de l'image a échoué.");
+    } finally {
+      setUploading(false);
+      URL.revokeObjectURL(local);
+    }
+  };
+  return (
+    <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted">
+      {/* eslint-disable-next-line @next/next/no-img-element -- local blob preview while uploading */}
+      {preview ? <img src={preview} alt="" className="size-full object-cover" /> : <Image src={value} alt="" fill sizes="32rem" className="object-cover" />}
+      <div className="absolute inset-x-0 bottom-0 flex justify-end bg-linear-to-t from-black/45 to-transparent p-3">
+        <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={uploading} onChange={(e) => pick(e.target.files?.[0])} />
+        <Button render={<label htmlFor={inputId} />} nativeButton={false} size="sm" variant="secondary" disabled={uploading} className="cursor-pointer">
+          {uploading ? <LoaderCircleIcon data-icon="inline-start" className="animate-spin motion-reduce:animate-none" /> : <ImageUpIcon data-icon="inline-start" />}
+          {uploading ? "Envoi…" : "Changer l'image"}
+        </Button>
+      </div>
+    </div>
   );
 }
 

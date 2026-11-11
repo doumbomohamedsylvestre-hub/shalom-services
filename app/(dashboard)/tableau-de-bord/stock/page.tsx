@@ -1,11 +1,11 @@
 "use client";
 
-import { BoxesIcon, PackagePlusIcon, PencilIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
+import { BanIcon, BoxesIcon, PackagePlusIcon, PencilIcon, PlusIcon, SlidersHorizontalIcon, TruckIcon } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useDeferredValue, useState } from "react";
 import { onFormSubmit, useAppForm } from "@/components/form/form";
-import { EmptyState, ErrorState, ListSkeleton, Money, SearchInput, StatCard } from "@/components/dashboard/kit";
+import { EmptyState, ErrorState, ListSkeleton, Money, SearchInput, StatCard, VoidDialog, useTarget } from "@/components/dashboard/kit";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { MovementBadge, ToneBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import { FieldGroup } from "@/components/ui/field";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useAdjustStock, useMovements, useProductCategories, useProducts, useSaveProduct } from "@/client/hooks";
+import { useAdjustStock, useMovements, useProductCategories, useProducts, useReceipts, useSaveProduct, useVoidReceipt } from "@/client/hooks";
 import { useSession } from "@/client/session";
 import { cn } from "@/lib/utils";
 import { PRODUCT_KIND } from "@/shared/domain/labels";
@@ -43,11 +43,11 @@ function Stock() {
 
   const list = (products.data ?? []).filter(
     (p) =>
-      (kind === "all" ? true : kind === "low" ? p.qtyOnHand <= p.minQty : p.kind === kind) &&
+      (kind === "all" ? true : kind === "low" ? p.active && p.qtyOnHand <= p.minQty : p.kind === kind) &&
       (!dq || p.name.toLowerCase().includes(dq) || p.sku.toLowerCase().includes(dq)),
   );
   const value = (products.data ?? []).reduce((s, p) => s + p.qtyOnHand * p.avgCost, 0);
-  const low = (products.data ?? []).filter((p) => p.qtyOnHand <= p.minQty).length;
+  const low = (products.data ?? []).filter((p) => p.active && p.qtyOnHand <= p.minQty).length;
 
   return (
     <>
@@ -83,6 +83,7 @@ function Stock() {
         <TabsList>
           <TabsTrigger value="produits">Produits</TabsTrigger>
           <TabsTrigger value="mouvements">Mouvements</TabsTrigger>
+          {can({ inventory: ["receive"] }) && <TabsTrigger value="receptions">Réceptions</TabsTrigger>}
         </TabsList>
         <TabsContent value="produits" className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -116,12 +117,17 @@ function Stock() {
                 </TableHeader>
                 <TableBody>
                   {list.map((p) => {
-                    const isLow = p.qtyOnHand <= p.minQty;
+                    const isLow = p.active && p.qtyOnHand <= p.minQty;
                     return (
                       <TableRow key={p.id}>
                         <TableCell className="pl-5">
-                          <p className="font-medium">{p.name}</p>
+                          <p className={cn("font-medium", !p.active && "text-muted-foreground")}>{p.name}</p>
                           <p className="font-mono text-xs text-muted-foreground">{p.sku}</p>
+                          {!p.active && (
+                            <ToneBadge tone="neutral" className="mt-1">
+                              Retiré de la vente
+                            </ToneBadge>
+                          )}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <p>{p.category}</p>
@@ -166,6 +172,11 @@ function Stock() {
         <TabsContent value="mouvements" className="mt-4">
           <Movements />
         </TabsContent>
+        {can({ inventory: ["receive"] }) && (
+          <TabsContent value="receptions" className="mt-4">
+            <Receipts />
+          </TabsContent>
+        )}
       </Tabs>
 
       <ProductDialog product={editing === "new" ? undefined : (editing ?? undefined)} open={editing !== null} onOpenChange={(o) => !o && setEditing(null)} />
@@ -212,6 +223,76 @@ function Movements() {
   );
 }
 
+function Receipts() {
+  const { can } = useSession();
+  const receipts = useReceipts();
+  const voidReceipt = useVoidReceipt();
+  const target = useTarget<string>();
+  if (receipts.isLoading) return <ListSkeleton />;
+  if (receipts.isError) return <ErrorState onRetry={() => receipts.refetch()} />;
+  if (!receipts.data?.length) return <EmptyState icon={TruckIcon} title="Aucune réception" description="Les livraisons fournisseurs apparaissent ici." />;
+  return (
+    <>
+      <Card className="rounded-2xl py-0">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="pl-5">Date</TableHead>
+              <TableHead>Fournisseur et articles</TableHead>
+              <TableHead className="text-right">Valeur</TableHead>
+              <TableHead className="hidden pr-5 md:table-cell">Par</TableHead>
+              <TableHead className="w-0 pr-5" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {receipts.data.map((r) => {
+              const units = r.lines.reduce((n, l) => n + l.qty, 0);
+              return (
+                <TableRow key={r.id} className={cn(r.voided && "opacity-60")}>
+                  <TableCell className="pl-5 align-top whitespace-nowrap text-muted-foreground">{formatDateTime(r.at)}</TableCell>
+                  <TableCell className="max-w-80 align-top">
+                    <p className={cn("truncate font-medium", r.voided && "line-through")}>{r.supplier.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {units} article{units > 1 ? "s" : ""} · {r.lines.map((l) => `${l.qty}× ${l.productName}`).join(", ")}
+                    </p>
+                    {r.note && <p className="truncate text-xs text-muted-foreground">{r.note}</p>}
+                    {r.voided && (
+                      <ToneBadge tone="danger" className="mt-1">
+                        Annulée : {r.voided.reason}
+                      </ToneBadge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right align-top">
+                    <Money value={r.totalCost} className={cn("font-semibold", r.voided && "line-through")} />
+                    <p className="text-xs text-muted-foreground">
+                      payé <Money value={r.amountPaid} />
+                    </p>
+                  </TableCell>
+                  <TableCell className="hidden pr-5 align-top text-muted-foreground md:table-cell">{r.by}</TableCell>
+                  <TableCell className="pr-5 align-top">
+                    {can({ inventory: ["adjust"] }) && !r.voided && (
+                      <Button variant="ghost" size="icon" aria-label={`Annuler la réception de ${r.supplier.name}`} onClick={() => target.open(r.id)}>
+                        <BanIcon />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </Card>
+      <VoidDialog
+        open={target.isOpen}
+        onOpenChange={(o) => !o && target.close()}
+        title="Annuler cette réception ?"
+        description="Les articles reçus sortent du stock au coût moyen actuel. Impossible si une partie a déjà été vendue ou utilisée : faites alors un ajustement."
+        onConfirm={(reason) => voidReceipt.mutateAsync({ id: target.target!, reason })}
+      />
+    </>
+  );
+}
+
 function ProductDialog({ product, open, onOpenChange }: { product?: Product; open: boolean; onOpenChange: (o: boolean) => void }) {
   const save = useSaveProduct();
   const categories = useProductCategories();
@@ -222,6 +303,7 @@ function ProductDialog({ product, open, onOpenChange }: { product?: Product; ope
     category: product?.category ?? "",
     salePrice: product?.salePrice ?? 0,
     minQty: product?.minQty ?? 2,
+    active: product?.active ?? true,
   };
   const form = useAppForm({
     defaultValues: initial,
@@ -260,6 +342,11 @@ function ProductDialog({ product, open, onOpenChange }: { product?: Product; ope
               <form.AppField name="salePrice">{(f) => <f.MoneyField label="Prix de vente" />}</form.AppField>
               <form.AppField name="minQty">{(f) => <f.NumberField label="Seuil d'alerte" description="Alerte quand le stock atteint ce niveau." />}</form.AppField>
             </div>
+            {product && (
+              <form.AppField name="active">
+                {(f) => <f.SwitchField label="En vente" description="Désactivé : masqué de la caisse et des réceptions. L'historique est conservé." />}
+              </form.AppField>
+            )}
           </FieldGroup>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

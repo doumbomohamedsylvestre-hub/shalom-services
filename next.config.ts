@@ -10,12 +10,18 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Playwright builds into its own folder so it never disturbs a running `next dev`.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
   experimental: {
     agentFeedback: true,
+  },
+  images: {
+    // Service images uploaded to Neon object storage (server/storage.ts).
+    remotePatterns: [{ protocol: "https", hostname: "**.storage.c-15.us-east-1.aws.neon.tech", pathname: "/site-images/services/**" }],
   },
   cacheComponents: true,
   partialPrefetching: true,

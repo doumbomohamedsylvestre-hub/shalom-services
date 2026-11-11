@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
@@ -26,6 +27,10 @@ export async function handle<T>(fn: () => Promise<T>, init?: { status?: number }
     if (data === undefined) return new NextResponse(null, { status: 204 });
     return NextResponse.json(data, init);
   } catch (err) {
+    // Let Next.js internals through: reading headers()/cookies() during the
+    // build-time prerender must interrupt it, or the route would be frozen as a
+    // static 500 instead of becoming dynamic.
+    unstable_rethrow(err);
     return errorResponse(err);
   }
 }
