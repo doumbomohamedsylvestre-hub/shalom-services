@@ -18,6 +18,10 @@ const ACTION: Record<string, { label: string; tone: Tone }> = {
   discount: { label: "Remise", tone: "brand" },
   ban: { label: "Désactivation", tone: "danger" },
   unban: { label: "Réactivation", tone: "info" },
+  update: { label: "Modification", tone: "info" },
+  receive: { label: "Réception", tone: "success" },
+  role: { label: "Rôle", tone: "warning" },
+  password: { label: "Mot de passe", tone: "warning" },
 };
 
 export default function AuditPage() {

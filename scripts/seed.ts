@@ -4,9 +4,13 @@
 // Required env: SEED_ADMIN_USERNAME, SEED_ADMIN_PASSWORD. Optional: SEED_ADMIN_NAME.
 // The admin should change the password after first login.
 //
+// Always (idempotent, never overwrites edits): shop settings row, the service
+// catalogue, product and expense categories (scripts/seed-data.ts).
+//
 // Optional, local/preview only: SEED_STAFF_PASSWORD also creates the sample
 // reception and technician accounts below (same names as the demo data), all
-// with that password. Never set it for production.
+// with that password. SEED_SAMPLE_CATALOG=1 adds the demo suppliers and
+// products with an opening stock. Never set either for production.
 import { loadEnvConfig } from "@next/env";
 
 loadEnvConfig(process.cwd());
@@ -86,7 +90,103 @@ async function main() {
     console.log("[seed] SEED_STAFF_PASSWORD not set: sample staff skipped");
   }
 
+  await seedReferenceData(db);
+  if (process.env.SEED_SAMPLE_CATALOG === "1") {
+    if (process.env.VERCEL_ENV === "production") throw new Error("SEED_SAMPLE_CATALOG must not be set in production");
+    await seedSampleCatalog(db);
+  } else {
+    console.log("[seed] SEED_SAMPLE_CATALOG not set: sample products and suppliers skipped");
+  }
+
   await db.$client.end();
+}
+
+type Db = typeof import("../server/db/client").db;
+
+/** Settings, services and categories. Inserts only what is missing. */
+async function seedReferenceData(db: Db) {
+  const schema = await import("../server/db/schema");
+  const { DEFAULT_SETTINGS } = await import("../server/services/settings");
+  const data = await import("./seed-data");
+
+  const settings = await db
+    .insert(schema.shopSettings)
+    .values({
+      id: 1,
+      name: DEFAULT_SETTINGS.name,
+      address: DEFAULT_SETTINGS.address,
+      city: DEFAULT_SETTINGS.city,
+      phones: DEFAULT_SETTINGS.phones,
+      whatsapp: DEFAULT_SETTINGS.whatsapp,
+      email: DEFAULT_SETTINGS.email ?? null,
+      mapUrl: DEFAULT_SETTINGS.mapUrl ?? null,
+      mapEmbedUrl: DEFAULT_SETTINGS.mapEmbedUrl ?? null,
+      hours: DEFAULT_SETTINGS.hours,
+      terms: DEFAULT_SETTINGS.terms,
+      taxRate: DEFAULT_SETTINGS.taxRate,
+      salePrefix: DEFAULT_SETTINGS.prefixes.sale,
+      invoicePrefix: DEFAULT_SETTINGS.prefixes.invoice,
+      waQuoteReady: DEFAULT_SETTINGS.whatsappTemplates.quoteReady,
+      waRepairReady: DEFAULT_SETTINGS.whatsappTemplates.repairReady,
+    })
+    .onConflictDoNothing()
+    .returning({ id: schema.shopSettings.id });
+  console.log(settings.length ? "[seed] created shop settings (placeholder phones: edit them in Paramètres)" : "[seed] shop settings already exist");
+
+  const services = await db
+    .insert(schema.services)
+    .values(data.SERVICES.map((s) => ({ ...s })))
+    .onConflictDoNothing({ target: schema.services.slug })
+    .returning({ id: schema.services.id });
+  console.log(`[seed] services: ${services.length} created`);
+
+  const pc = await db
+    .insert(schema.productCategories)
+    .values(data.PRODUCT_CATEGORIES.map((name) => ({ name })))
+    .onConflictDoNothing({ target: schema.productCategories.name })
+    .returning({ id: schema.productCategories.id });
+  const ec = await db
+    .insert(schema.expenseCategories)
+    .values(data.EXPENSE_CATEGORIES.map((name) => ({ name })))
+    .onConflictDoNothing({ target: schema.expenseCategories.name })
+    .returning({ id: schema.expenseCategories.id });
+  console.log(`[seed] categories: ${pc.length} product, ${ec.length} expense created`);
+}
+
+/** Dev/preview: demo suppliers and products, opening stock recorded as an adjustment. */
+async function seedSampleCatalog(db: Db) {
+  const schema = await import("../server/db/schema");
+  const data = await import("./seed-data");
+
+  const [anyProduct] = await db.select({ id: schema.products.id }).from(schema.products).limit(1);
+  if (anyProduct) {
+    console.log("[seed] products already exist: sample catalogue skipped");
+    return;
+  }
+  const [branch] = await db.select({ id: schema.branches.id }).from(schema.branches).limit(1);
+  const categories = new Map(
+    (await db.select({ id: schema.productCategories.id, name: schema.productCategories.name }).from(schema.productCategories)).map((c) => [c.name, c.id]),
+  );
+  await db.transaction(async (tx) => {
+    await tx.insert(schema.suppliers).values(data.SAMPLE_SUPPLIERS);
+    for (const [sku, name, kind, category, salePrice, avgCost, qty, minQty] of data.SAMPLE_PRODUCTS) {
+      const [p] = await tx
+        .insert(schema.products)
+        .values({ branchId: branch!.id, sku, name, kind, categoryId: categories.get(category)!, salePrice, avgCost, qtyOnHand: qty, minQty })
+        .returning({ id: schema.products.id });
+      if (qty > 0) {
+        await tx.insert(schema.stockMovements).values({
+          branchId: branch!.id,
+          productId: p!.id,
+          type: "adjustment",
+          qtyDelta: qty,
+          unitCost: avgCost,
+          reason: "Stock initial (données de démonstration)",
+        });
+      }
+    }
+  });
+  console.log(`[seed] sample catalogue: ${data.SAMPLE_SUPPLIERS.length} suppliers, ${data.SAMPLE_PRODUCTS.length} products`);
 }
 
 main().catch((err) => {

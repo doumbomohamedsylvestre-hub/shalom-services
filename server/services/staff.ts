@@ -8,8 +8,10 @@ import { and, eq, inArray, max } from "drizzle-orm";
 import { db } from "@/server/db/client";
 import { session as sessionTable, user as userTable } from "@/server/db/schema";
 import { AppError, notFound } from "@/server/errors";
+import { audit } from "./_shared";
 import { assertCan, toRole, type StaffSession } from "@/server/auth/session";
 import { auth } from "@/server/auth/auth";
+import { ROLE_LABELS } from "@/shared/auth/permissions";
 import type { StaffUser } from "@/shared/domain/types";
 import {
   resetPasswordSchema,
@@ -127,6 +129,7 @@ export async function createStaff(session: StaffSession, input: StaffUserInput):
         data: { username: data.username, displayUsername: data.username },
       },
     });
+    await audit(db, session, { action: "create", entity: "Utilisateur", entityId: user.id, entityRef: data.username, summary: `Compte ${ROLE_LABELS[data.role].toLowerCase()} créé pour ${data.name}.` });
     return getStaffUser(user.id);
   } catch (err) {
     translate(err);
@@ -144,7 +147,7 @@ export async function updateStaff(session: StaffSession, id: string, input: Staf
     assertCan(session, { user: ["ban"] });
     assertNotSelf(session, id, "Vous ne pouvez pas désactiver votre propre compte.");
   }
-  await getStaffUser(id);
+  const before = await getStaffUser(id);
 
   try {
     if (patch.role !== undefined) {
@@ -162,6 +165,18 @@ export async function updateStaff(session: StaffSession, id: string, input: Staf
   } catch (err) {
     translate(err);
   }
+  if (patch.role !== undefined && patch.role !== before.role) {
+    await audit(db, session, { action: "role", entity: "Utilisateur", entityId: id, entityRef: before.username, summary: `Rôle : ${ROLE_LABELS[before.role]} → ${ROLE_LABELS[patch.role]}.` });
+  }
+  if (patch.banned !== undefined && patch.banned !== before.banned) {
+    await audit(db, session, {
+      action: patch.banned ? "ban" : "unban",
+      entity: "Utilisateur",
+      entityId: id,
+      entityRef: before.username,
+      summary: patch.banned ? "Compte désactivé, sessions fermées." : "Compte réactivé.",
+    });
+  }
   return getStaffUser(id);
 }
 
@@ -170,11 +185,12 @@ export async function resetStaffPassword(session: StaffSession, id: string, inpu
   assertCan(session, { user: ["set-password"], session: ["revoke"] });
   assertNotSelf(session, id, "Pour votre propre compte, utilisez « Changer mon mot de passe ».");
   const { password } = resetPasswordSchema.parse(input);
-  await getStaffUser(id);
+  const target = await getStaffUser(id);
   try {
     await auth.api.setUserPassword({ headers: session.headers, body: { userId: id, newPassword: password } });
     await auth.api.revokeUserSessions({ headers: session.headers, body: { userId: id } });
   } catch (err) {
     translate(err);
   }
+  await audit(db, session, { action: "password", entity: "Utilisateur", entityId: id, entityRef: target.username, summary: "Mot de passe réinitialisé, sessions fermées." });
 }

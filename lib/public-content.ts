@@ -1,21 +1,21 @@
 import { cacheLife, cacheTag } from "next/cache";
-import * as api from "@/client/api";
+import { readPublicServices, readSettings } from "@/server/services/settings";
 
 /**
  * Cached data for the public site (shared by every visitor, prerendered).
- * When the backend lands, these call the service layer instead of the demo
- * API, and admin edits call `revalidateTag("settings" | "services")`.
+ * Read straight from the service layer; admin edits in Paramètres call
+ * `revalidateTag("settings" | "services")` so the site updates at once.
  */
 export async function getPublicSettings() {
   "use cache";
   cacheTag("settings");
   cacheLife("hours");
-  return api.getSettings();
+  return readSettings();
 }
 
 export async function getPublicServices() {
   "use cache";
   cacheTag("services");
   cacheLife("hours");
-  return api.getServices({ publicOnly: true });
+  return readPublicServices();
 }

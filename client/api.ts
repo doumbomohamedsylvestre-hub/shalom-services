@@ -1,11 +1,12 @@
 /**
  * The front end's only data access layer.
  *
- * Every function is async and returns plain domain types (shared/domain/types).
- * Today they read and write the in-memory demo store (client/mock/data).
- * Integration = replace each body with a call to `http` (client/http.ts)
- * against the matching route handler; signatures stay the same, so hooks and
- * screens do not change.
+ * Every function returns plain domain types (shared/domain/types).
+ * Live (route handlers via client/http.ts): staff, settings and services,
+ * customers, stock, suppliers, sales, expenses, audit log.
+ * Still demo (client/mock/data): repairs, inquiries, public tracking, reports.
+ * Integration = replace a body with an `http` call; signatures stay the same,
+ * so hooks and screens do not change.
  */
 import * as db from "@/client/mock/data";
 import { linesTotal, paidTotal } from "@/shared/domain/money";
@@ -19,7 +20,6 @@ import type {
   ExpenseCategory,
   Inquiry,
   InquiryStatus,
-  LineItem,
   Payment,
   Product,
   Repair,
@@ -79,15 +79,10 @@ function audit(action: string, entity: string, entityRef: string, summary: strin
 
 // ───────────────────────────── Public site ─────────────────────────────
 
-export async function getSettings(): Promise<ShopSettings> {
-  await latency(100);
-  return clone(db.settings);
-}
+export const getSettings = () => http.get<ShopSettings>("/api/settings");
 
-export async function getServices(opts: { publicOnly?: boolean } = {}): Promise<Service[]> {
-  await latency(150);
-  return clone(db.services.filter((s) => (opts.publicOnly ? s.isPublic && s.active : true)).sort((a, b) => a.sort - b.sort));
-}
+export const getServices = (opts: { publicOnly?: boolean } = {}) =>
+  http.get<Service[]>(`/api/services${opts.publicOnly ? "?public=1" : ""}`);
 
 export async function submitInquiry(input: InquiryInput): Promise<{ id: string }> {
   await latency(700);
@@ -134,21 +129,20 @@ export async function getTrackingExample() {
 // ───────────────────────────── Dashboard ─────────────────────────────
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  await latency();
+  // Boutique figures are live; repair figures stay demo until the repairs phase.
+  const boutique = await http.get<{ lowStock: number; todaySales: number; monthSales: number }>("/api/dashboard/boutique");
   const open = db.repairs.filter((r) => OPEN_STATUSES.includes(r.status));
   const today = new Date().toDateString();
   const monthStart = Date.now() - 30 * 86400_000;
-  const allPayments = [...db.repairs.flatMap((r) => r.payments), ...db.sales.filter((s) => !s.voided).flatMap((s) => s.payments)].filter(
-    (p) => !p.voided,
-  );
+  const repairPayments = db.repairs.flatMap((r) => r.payments).filter((p) => !p.voided);
   return {
     openRepairs: open.length,
     readyForPickup: open.filter((r) => r.status === "ready").length,
     overdue: open.filter((r) => r.estimatedReadyAt && new Date(r.estimatedReadyAt).getTime() < Date.now() && r.status !== "ready").length,
     unclaimed: open.filter((r) => !r.technician).length,
-    todayRevenue: allPayments.filter((p) => new Date(p.at).toDateString() === today).reduce((s, p) => s + p.amount, 0),
-    monthRevenue: allPayments.filter((p) => new Date(p.at).getTime() > monthStart).reduce((s, p) => s + p.amount, 0),
-    lowStock: db.products.filter((p) => p.active && p.qtyOnHand <= p.minQty).length,
+    todayRevenue: boutique.todaySales + repairPayments.filter((p) => new Date(p.at).toDateString() === today).reduce((s, p) => s + p.amount, 0),
+    monthRevenue: boutique.monthSales + repairPayments.filter((p) => new Date(p.at).getTime() > monthStart).reduce((s, p) => s + p.amount, 0),
+    lowStock: boutique.lowStock,
     newInquiries: db.inquiries.filter((i) => i.status === "new").length,
   };
 }
@@ -314,209 +308,59 @@ export async function voidPayment(repairId: string, paymentId: string, reason: s
 
 // Customers
 
-export async function listCustomers(q?: string): Promise<Customer[]> {
-  await latency();
-  const s = q?.trim().toLowerCase();
-  return clone(db.customers.filter((c) => (!s ? true : c.name.toLowerCase().includes(s) || c.phone.includes(s.replace(/\s/g, "")))));
-}
+export const listCustomers = (q?: string) =>
+  http.get<Customer[]>(`/api/customers${q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`);
 
-export async function getCustomer(id: string): Promise<{ customer: Customer; repairs: Repair[]; sales: Sale[] }> {
-  await latency();
-  const customer = db.customers.find((c) => c.id === id);
-  if (!customer) throw new ApiError("NOT_FOUND", "Client introuvable.");
-  return clone({
-    customer,
-    repairs: db.repairs.filter((r) => r.customer.id === id),
-    sales: db.sales.filter((s) => s.customer?.id === id),
-  });
-}
+export const getCustomer = (id: string) =>
+  http.get<{ customer: Customer; repairs: Repair[]; sales: Sale[] }>(`/api/customers/${encodeURIComponent(id)}`);
 
-export async function saveCustomer(input: CustomerInput, id?: string): Promise<Customer> {
-  await latency();
-  const phone = normalizeMaliPhone(input.phone)!;
-  const dup = db.customers.find((c) => c.phone === phone && c.id !== id);
-  if (dup) throw new ApiError("DUPLICATE_PHONE", `Ce numéro appartient déjà à ${dup.name}.`);
-  if (id) {
-    const c = db.customers.find((x) => x.id === id)!;
-    Object.assign(c, { name: input.name, phone, altPhone: input.altPhone || undefined, notes: input.notes || undefined });
-    return clone(c);
-  }
-  const c: Customer = { id: db.newId("cus"), name: input.name, phone, altPhone: input.altPhone || undefined, notes: input.notes || undefined, createdAt: nowISO(), repairsCount: 0, totalSpent: 0 };
-  db.customers.unshift(c);
-  return clone(c);
-}
+export const saveCustomer = (input: CustomerInput, id?: string) =>
+  id ? http.patch<Customer>(`/api/customers/${encodeURIComponent(id)}`, input) : http.post<Customer>("/api/customers", input);
 
 // Inventory
 
-export async function listProducts(): Promise<Product[]> {
-  await latency();
-  return clone(db.products);
-}
+export const listProducts = () => http.get<Product[]>("/api/products");
 
-export async function listProductCategories(): Promise<string[]> {
-  return clone(db.productCategories);
-}
+export const listProductCategories = () => http.get<string[]>("/api/product-categories");
 
-export async function saveProduct(input: ProductInput, id?: string): Promise<Product> {
-  await latency();
-  if (db.products.some((p) => p.sku === input.sku && p.id !== id)) throw new ApiError("DUPLICATE_SKU", "Cette référence existe déjà.");
-  if (id) {
-    const p = db.products.find((x) => x.id === id)!;
-    Object.assign(p, input);
-    return clone(p);
-  }
-  const p: Product = { ...input, id: db.newId("prd"), avgCost: 0, qtyOnHand: 0, active: true };
-  db.products.unshift(p);
-  return clone(p);
-}
+export const createProductCategory = (name: string) => http.post<string>("/api/product-categories", { name });
 
-export async function adjustStock(input: StockAdjustmentInput): Promise<Product> {
-  await latency();
-  const p = db.products.find((x) => x.id === input.productId)!;
-  if (p.qtyOnHand + input.qtyDelta < 0) throw new ApiError("NEGATIVE_STOCK", "Le stock ne peut pas devenir négatif.");
-  p.qtyOnHand += input.qtyDelta;
-  db.movements.unshift({ id: db.newId("mov"), productId: p.id, productName: p.name, type: "adjustment", qtyDelta: input.qtyDelta, unitCost: p.avgCost, by: ACTOR, at: nowISO(), reason: input.reason });
-  audit("adjust", "Stock", p.sku, `Ajustement ${input.qtyDelta > 0 ? "+" : ""}${input.qtyDelta} : ${input.reason}`);
-  return clone(p);
-}
+export const saveProduct = (input: ProductInput, id?: string) =>
+  id ? http.patch<Product>(`/api/products/${encodeURIComponent(id)}`, input) : http.post<Product>("/api/products", input);
 
-export async function receiveStock(input: StockReceiptInput): Promise<void> {
-  await latency(700);
-  const supplier = db.suppliers.find((s) => s.id === input.supplierId)!;
-  for (const line of input.lines) {
-    const p = db.products.find((x) => x.id === line.productId)!;
-    // Weighted average cost (SPEC §2.6).
-    p.avgCost = Math.round((p.qtyOnHand * p.avgCost + line.qty * line.unitCost) / (p.qtyOnHand + line.qty));
-    p.qtyOnHand += line.qty;
-    db.movements.unshift({ id: db.newId("mov"), productId: p.id, productName: p.name, type: "receipt", qtyDelta: line.qty, unitCost: line.unitCost, ref: `Réception ${supplier.name}`, by: ACTOR, at: nowISO() });
-  }
-  supplier.receiptsCount += 1;
-  supplier.lastReceiptAt = nowISO();
-}
+export const adjustStock = (input: StockAdjustmentInput) => http.post<Product>("/api/stock/adjustments", input);
 
-export async function listMovements(productId?: string): Promise<StockMovement[]> {
-  await latency();
-  return clone(db.movements.filter((m) => !productId || m.productId === productId));
-}
+export const receiveStock = (input: StockReceiptInput) => http.post<void>("/api/stock/receipts", input);
 
-export async function listSuppliers(): Promise<Supplier[]> {
-  await latency();
-  return clone(db.suppliers);
-}
+export const listMovements = (productId?: string) =>
+  http.get<StockMovement[]>(`/api/stock/movements${productId ? `?productId=${encodeURIComponent(productId)}` : ""}`);
 
-export async function saveSupplier(input: SupplierInput, id?: string): Promise<Supplier> {
-  await latency();
-  if (id) {
-    const s = db.suppliers.find((x) => x.id === id)!;
-    Object.assign(s, { ...input, phone: input.phone || undefined });
-    return clone(s);
-  }
-  const s: Supplier = { id: db.newId("sup"), name: input.name, phone: input.phone || undefined, contact: input.contact || undefined, notes: input.notes || undefined, receiptsCount: 0 };
-  db.suppliers.unshift(s);
-  return clone(s);
-}
+export const listSuppliers = () => http.get<Supplier[]>("/api/suppliers");
+
+export const saveSupplier = (input: SupplierInput, id?: string) =>
+  id ? http.patch<Supplier>(`/api/suppliers/${encodeURIComponent(id)}`, input) : http.post<Supplier>("/api/suppliers", input);
 
 // Sales
 
-export async function listSales(): Promise<Sale[]> {
-  await latency();
-  return clone(db.sales);
-}
+export const listSales = () => http.get<Sale[]>("/api/sales");
 
-export async function getSale(id: string): Promise<Sale> {
-  await latency(200);
-  const s = db.sales.find((x) => x.id === id);
-  if (!s) throw new ApiError("NOT_FOUND", "Vente introuvable.");
-  return clone(s);
-}
+export const getSale = (id: string) => http.get<Sale>(`/api/sales/${encodeURIComponent(id)}`);
 
-export async function createSale(input: SaleInput): Promise<Sale> {
-  await latency(700);
-  const total = linesTotal(input.lines);
-  const paid = input.payments.reduce((s, p) => s + p.amount, 0);
-  if (paid !== total) throw new ApiError("PAYMENT_MISMATCH", "Les paiements doivent couvrir exactement le total.");
-  for (const l of input.lines) {
-    const p = db.products.find((x) => x.id === l.refId);
-    if (p && p.qtyOnHand < l.qty) throw new ApiError("OUT_OF_STOCK", `Stock insuffisant pour ${p.name}.`);
-  }
-  const at = nowISO();
-  const number = `V-${String(Number(db.sales[0]?.number.slice(2) ?? 1000) + 1).padStart(5, "0")}`;
-  for (const l of input.lines) {
-    const p = db.products.find((x) => x.id === l.refId);
-    if (p) {
-      p.qtyOnHand -= l.qty;
-      db.movements.unshift({ id: db.newId("mov"), productId: p.id, productName: p.name, type: "sale", qtyDelta: -l.qty, unitCost: p.avgCost, ref: number, by: ACTOR, at });
-    }
-  }
-  const customer = input.customerId ? db.customers.find((c) => c.id === input.customerId) : undefined;
-  const sale: Sale = {
-    id: db.newId("sal"),
-    number,
-    customer: customer ? { id: customer.id, name: customer.name, phone: customer.phone } : undefined,
-    lines: input.lines.map((l) => ({ ...l, id: db.newId("lin"), discountBy: l.discount ? ACTOR : undefined })) as LineItem[],
-    payments: input.payments.map((p) => ({ ...p, id: db.newId("pay"), kind: "payment" as const, receivedBy: ACTOR, at })),
-    soldBy: ACTOR,
-    at,
-  };
-  db.sales.unshift(sale);
-  return clone(sale);
-}
+export const createSale = (input: SaleInput) => http.post<Sale>("/api/sales", input);
 
-export async function voidSale(id: string, reason: string): Promise<Sale> {
-  await latency();
-  const s = db.sales.find((x) => x.id === id)!;
-  s.voided = { at: nowISO(), by: ACTOR, reason };
-  for (const l of s.lines) {
-    const p = db.products.find((x) => x.id === l.refId);
-    if (p) {
-      p.qtyOnHand += l.qty;
-      db.movements.unshift({ id: db.newId("mov"), productId: p.id, productName: p.name, type: "void", qtyDelta: l.qty, unitCost: p.avgCost, ref: s.number, by: ACTOR, at: nowISO(), reason });
-    }
-  }
-  audit("void", "Vente", s.number, `Vente annulée : ${reason}`);
-  return clone(s);
-}
+export const voidSale = (id: string, reason: string) => http.post<Sale>(`/api/sales/${encodeURIComponent(id)}/void`, { reason });
 
 // Expenses
 
-export async function listExpenses(): Promise<Expense[]> {
-  await latency();
-  return clone([...db.expenses].sort((a, b) => b.date.localeCompare(a.date)));
-}
+export const listExpenses = () => http.get<Expense[]>("/api/expenses");
 
-export async function listExpenseCategories(): Promise<ExpenseCategory[]> {
-  return clone(db.expenseCategories);
-}
+export const listExpenseCategories = () => http.get<ExpenseCategory[]>("/api/expense-categories");
 
-export async function createExpense(input: ExpenseInput): Promise<Expense> {
-  await latency();
-  const e: Expense = {
-    id: db.newId("exp"),
-    date: new Date(input.date).toISOString(),
-    category: db.expenseCategories.find((c) => c.id === input.categoryId)!,
-    amount: input.amount,
-    method: input.method,
-    note: input.note || undefined,
-    createdBy: ACTOR,
-  };
-  db.expenses.unshift(e);
-  return clone(e);
-}
+export const createExpense = (input: ExpenseInput) => http.post<Expense>("/api/expenses", input);
 
-export async function voidExpense(id: string, reason: string): Promise<Expense> {
-  await latency();
-  const e = db.expenses.find((x) => x.id === id)!;
-  e.voided = { at: nowISO(), by: ACTOR, reason };
-  audit("void", "Dépense", e.id, `Dépense annulée : ${reason}`);
-  return clone(e);
-}
+export const voidExpense = (id: string, reason: string) => http.post<Expense>(`/api/expenses/${encodeURIComponent(id)}/void`, { reason });
 
-export async function createExpenseCategory(name: string): Promise<ExpenseCategory> {
-  await latency();
-  const c = { id: db.newId("exc"), name };
-  db.expenseCategories.push(c);
-  return clone(c);
-}
+export const createExpenseCategory = (name: string) => http.post<ExpenseCategory>("/api/expense-categories", { name });
 
 // Inquiries
 
@@ -573,43 +417,12 @@ export const resetStaffPassword = (id: string, password: string) =>
 
 // ───────────────────────────── Settings ─────────────────────────────
 
-export async function saveSettings(input: SettingsInput): Promise<ShopSettings> {
-  await latency();
-  Object.assign(db.settings, {
-    name: input.name,
-    address: input.address,
-    city: input.city,
-    phones: input.phones.map((p) => normalizeMaliPhone(p)!),
-    whatsapp: normalizeMaliPhone(input.whatsapp)!,
-    email: input.email || undefined,
-    terms: input.terms,
-    whatsappTemplates: { quoteReady: input.quoteReady, repairReady: input.repairReady },
-  });
-  return clone(db.settings);
-}
+export const saveSettings = (input: SettingsInput) => http.put<ShopSettings>("/api/settings", input);
 
-export async function saveService(input: ServiceInput, id?: string): Promise<Service> {
-  await latency();
-  if (id) {
-    const s = db.services.find((x) => x.id === id)!;
-    Object.assign(s, input);
-    return clone(s);
-  }
-  const s: Service = {
-    ...input,
-    id: db.newId("svc"),
-    slug: input.name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-"),
-    image: "/assets/services/service-precision-repair.webp",
-    sort: db.services.length + 1,
-  };
-  db.services.push(s);
-  return clone(s);
-}
+export const saveService = (input: ServiceInput, id?: string) =>
+  id ? http.patch<Service>(`/api/services/${encodeURIComponent(id)}`, input) : http.post<Service>("/api/services", input);
 
-export async function listAudit(): Promise<AuditEntry[]> {
-  await latency();
-  return clone(db.audit);
-}
+export const listAudit = () => http.get<AuditEntry[]>("/api/audit");
 
 // Reports
 
@@ -669,6 +482,6 @@ export async function getReport(range: ReportRange): Promise<ReportData> {
       { name: "Diagnostic complet", count: 19, revenue: 47500 },
       { name: "Logiciel & mises à jour", count: 14, revenue: 105000 },
     ],
-    stockValue: db.products.reduce((sum, p) => sum + p.qtyOnHand * p.avgCost, 0),
+    stockValue: (await listProducts()).reduce((sum, p) => sum + p.qtyOnHand * p.avgCost, 0),
   };
 }
