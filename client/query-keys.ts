@@ -26,6 +26,7 @@ export const qk = {
   expenses: { all: ["expenses"] as const, categories: ["expenses", "categories"] as const },
   inquiries: ["inquiries"] as const,
   staff: ["staff"] as const,
+  technicians: ["staff", "technicians"] as const,
   audit: ["audit"] as const,
   reports: { all: ["reports"] as const, range: (r: ReportRange) => ["reports", r] as const },
 };

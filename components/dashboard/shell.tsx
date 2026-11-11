@@ -5,17 +5,15 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { SessionProvider } from "@/client/session";
+import type { StaffUser } from "@/shared/domain/types";
 import { AppSidebar } from "./app-sidebar";
 import { OfflineBanner } from "./offline-banner";
 import { HeaderSearch } from "./header-search";
 
-/**
- * Back-office shell. Auth is not wired yet: when it is, the layout will
- * check the session on the server and redirect to /connexion.
- */
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+/** Back-office shell. `user` comes from the server-validated session (dashboard layout). */
+export function DashboardShell({ user, children }: { user: StaffUser; children: React.ReactNode }) {
   return (
-    <SessionProvider>
+    <SessionProvider user={user}>
       <SidebarProvider className="min-h-dvh">
         <AppSidebar />
         <SidebarInset className="min-w-0">

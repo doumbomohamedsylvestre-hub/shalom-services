@@ -44,7 +44,7 @@ import {
   useRemoveRepairLine,
   useRepair,
   useSettings,
-  useStaff,
+  useTechnicians,
   useUpdateDiagnosis,
   useVoidPayment,
 } from "@/client/hooks";
@@ -156,7 +156,7 @@ function TechnicianControl({ repair: r }: { repair: Repair }) {
   const { user, can } = useSession();
   const claim = useClaimRepair();
   const assign = useAssignRepair();
-  const staff = useStaff();
+  const technicians = useTechnicians();
   const open = !["picked_up", "cancelled", "returned_unrepaired", "unrepairable"].includes(r.status);
 
   if (can({ repair: ["assign"] })) {
@@ -167,18 +167,19 @@ function TechnicianControl({ repair: r }: { repair: Repair }) {
           {r.technician?.name ?? "Assigner"}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          {(staff.data ?? [])
-            .filter((u) => u.role === "technician" && !u.banned)
-            .map((u) => (
-              <DropdownMenuItem key={u.id} onClick={() => assign.mutate({ id: r.id, technicianId: u.id })}>
-                {u.name}
-                {r.technician?.id === u.id && <Badge variant="secondary" className="ml-auto">Actuel</Badge>}
-              </DropdownMenuItem>
-            ))}
+          {technicians.isLoading && <DropdownMenuItem disabled>Chargement…</DropdownMenuItem>}
+          {technicians.isError && <DropdownMenuItem disabled>Liste indisponible.</DropdownMenuItem>}
+          {technicians.data?.length === 0 && <DropdownMenuItem disabled>Aucun technicien actif.</DropdownMenuItem>}
+          {(technicians.data ?? []).map((u) => (
+            <DropdownMenuItem key={u.id} onClick={() => assign.mutate({ id: r.id, technician: { id: u.id, name: u.name } })}>
+              {u.name}
+              {r.technician?.id === u.id && <Badge variant="secondary" className="ml-auto">Actuel</Badge>}
+            </DropdownMenuItem>
+          ))}
           {r.technician && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => assign.mutate({ id: r.id, technicianId: null })}>Remettre dans la file</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => assign.mutate({ id: r.id, technician: null })}>Remettre dans la file</DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>

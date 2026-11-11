@@ -1,8 +1,10 @@
 "use client";
 
-import { ChevronsUpDownIcon, ExternalLinkIcon, LogOutIcon, UserRoundCogIcon } from "lucide-react";
+import { ChevronsUpDownIcon, ExternalLinkIcon, KeyRoundIcon, LogOutIcon } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { Logo } from "@/components/brand/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -11,8 +13,6 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -33,15 +33,17 @@ import {
 } from "@/components/ui/sidebar";
 import { useDashboardSummary } from "@/client/hooks";
 import { useSession } from "@/client/session";
-import { ROLE_LABELS, type Role } from "@/shared/auth/permissions";
+import { ROLE_LABELS } from "@/shared/auth/permissions";
 import { initials } from "@/shared/format";
 import { ROUTES } from "@/shared/site";
+import { ChangePasswordDialog } from "./change-password-dialog";
 import { NAV_GROUPS } from "./nav";
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, can, setDemoRole } = useSession();
+  const { user, can, signOut } = useSession();
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const { setOpenMobile } = useSidebar();
   const summary = useDashboardSummary();
 
@@ -101,26 +103,36 @@ export function AppSidebar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-64">
                 <DropdownMenuGroup>
-                  <DropdownMenuLabel className="text-xs text-muted-foreground">
-                    Aperçu par rôle (démo, avant l&apos;authentification)
+                  <DropdownMenuLabel className="flex flex-col gap-0.5 font-normal">
+                    <span className="truncate text-sm font-medium text-foreground">{user.name}</span>
+                    <span className="truncate font-mono text-xs text-muted-foreground">@{user.username}</span>
                   </DropdownMenuLabel>
-                  <DropdownMenuRadioGroup value={user.role} onValueChange={(v) => setDemoRole(v as Role)}>
-                    {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
-                      <DropdownMenuRadioItem key={r} value={r}>
-                        <UserRoundCogIcon />
-                        {ROLE_LABELS[r]}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setChangingPassword(true)}>
+                  <KeyRoundIcon />
+                  Changer mon mot de passe
+                </DropdownMenuItem>
                 <DropdownMenuItem render={<Link href={ROUTES.home} target="_blank" />}>
                   <ExternalLinkIcon />
                   Voir le site public
                 </DropdownMenuItem>
-                <DropdownMenuItem variant="destructive" onClick={() => router.push(ROUTES.login)}>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={signingOut}
+                  onClick={async () => {
+                    setSigningOut(true);
+                    try {
+                      await signOut();
+                    } catch {
+                      setSigningOut(false);
+                      toast.error("Déconnexion impossible. Vérifiez votre accès à Internet.");
+                    }
+                  }}
+                >
                   <LogOutIcon />
-                  Se déconnecter
+                  {signingOut ? "Déconnexion…" : "Se déconnecter"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -128,6 +140,7 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
+      <ChangePasswordDialog open={changingPassword} onOpenChange={setChangingPassword} />
     </Sidebar>
   );
 }

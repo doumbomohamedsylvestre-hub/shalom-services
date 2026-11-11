@@ -31,8 +31,7 @@ import { cn } from "@/lib/utils";
 import { ROLE_LABELS, type Role } from "@/shared/auth/permissions";
 import type { StaffUser } from "@/shared/domain/types";
 import { formatRelative, initials } from "@/shared/format";
-import { staffUserSchema, type StaffUserInput } from "@/shared/schemas/staff";
-import { z } from "zod";
+import { resetPasswordSchema, staffUserSchema, type StaffUserInput } from "@/shared/schemas/staff";
 
 const ROLE_HINT: Record<Role, string> = {
   admin: "Tout, y compris finances, annulations et équipe.",
@@ -42,13 +41,14 @@ const ROLE_HINT: Record<Role, string> = {
 
 export default function TeamPage() {
   const { can, user: me } = useSession();
-  const staff = useStaff();
+  const allowed = can({ user: ["list"] });
+  const staff = useStaff({ enabled: allowed });
   const update = useUpdateStaff();
   const [creating, setCreating] = useState(false);
   const [resetFor, setResetFor] = useState<StaffUser | null>(null);
   const [banFor, setBanFor] = useState<StaffUser | null>(null);
 
-  if (!can({ user: ["list"] })) return <EmptyState icon={LockIcon} title="Accès réservé" description="La gestion de l'équipe est réservée à l'administrateur." />;
+  if (!allowed) return <EmptyState icon={LockIcon} title="Accès réservé" description="La gestion de l'équipe est réservée à l'administrateur." />;
 
   return (
     <>
@@ -85,9 +85,12 @@ export default function TeamPage() {
                       <Avatar className="size-9">
                         <AvatarFallback className="bg-primary/8 text-xs text-primary">{initials(u.name)}</AvatarFallback>
                       </Avatar>
-                      <div>
-                        <p className="font-medium">{u.name}</p>
-                        <p className="font-mono text-xs text-muted-foreground">@{u.username}</p>
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-2 font-medium">
+                          <span className="truncate">{u.name}</span>
+                          {u.id === me.id && <ToneBadge tone="neutral">Vous</ToneBadge>}
+                        </p>
+                        <p className="truncate font-mono text-xs text-muted-foreground">@{u.username}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -119,7 +122,7 @@ export default function TeamPage() {
                             </DropdownMenuRadioGroup>
                           </DropdownMenuSubContent>
                         </DropdownMenuSub>
-                        <DropdownMenuItem onClick={() => setResetFor(u)}>
+                        <DropdownMenuItem disabled={u.id === me.id} onClick={() => setResetFor(u)}>
                           <KeyRoundIcon />
                           Réinitialiser le mot de passe
                         </DropdownMenuItem>
@@ -201,8 +204,12 @@ function CreateStaffDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           <FieldGroup>
             <form.AppField name="name">{(f) => <f.TextField label="Nom complet" />}</form.AppField>
             <div className="grid gap-5 sm:grid-cols-2">
-              <form.AppField name="username">{(f) => <f.TextField label="Identifiant" autoComplete="off" placeholder="ex. aissata" />}</form.AppField>
-              <form.AppField name="password">{(f) => <f.TextField label="Mot de passe initial" type="text" autoComplete="new-password" />}</form.AppField>
+              <form.AppField name="username">
+                {(f) => <f.TextField label="Identifiant" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="ex. aissata" />}
+              </form.AppField>
+              <form.AppField name="password">
+                {(f) => <f.TextField label="Mot de passe initial" type="text" autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} />}
+              </form.AppField>
             </div>
             <form.AppField name="role">
               {(f) => (
@@ -227,13 +234,11 @@ function CreateStaffDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   );
 }
 
-const resetSchema = z.object({ password: z.string().min(8, "8 caractères minimum.") });
-
 function ResetPasswordDialog({ user, onOpenChange }: { user: StaffUser | null; onOpenChange: (o: boolean) => void }) {
   const reset = useResetStaffPassword();
   const form = useAppForm({
     defaultValues: { password: "" },
-    validators: { onSubmit: resetSchema },
+    validators: { onSubmit: resetPasswordSchema },
     onSubmit: async ({ value }) => {
       await reset.mutateAsync({ id: user!.id, password: value.password });
       onOpenChange(false);
@@ -251,10 +256,12 @@ function ResetPasswordDialog({ user, onOpenChange }: { user: StaffUser | null; o
         <form onSubmit={onFormSubmit(form)} noValidate className="flex flex-col gap-5">
           <DialogHeader>
             <DialogTitle>Nouveau mot de passe pour {user?.name}</DialogTitle>
-            <DialogDescription>Ses sessions ouvertes seront fermées.</DialogDescription>
+            <DialogDescription>La personne sera déconnectée de tous ses appareils. Communiquez-lui le nouveau mot de passe en main propre.</DialogDescription>
           </DialogHeader>
           <FieldGroup>
-            <form.AppField name="password">{(f) => <f.TextField label="Mot de passe" type="text" autoComplete="new-password" />}</form.AppField>
+            <form.AppField name="password">
+              {(f) => <f.TextField label="Mot de passe" type="text" autoComplete="new-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} description="8 caractères minimum." />}
+            </form.AppField>
           </FieldGroup>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

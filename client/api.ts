@@ -45,29 +45,27 @@ import type {
   SaleInput,
   ServiceInput,
   SettingsInput,
+  StaffUpdateInput,
   StaffUserInput,
   StockAdjustmentInput,
   StockReceiptInput,
   SupplierInput,
 } from "@/shared/schemas/staff";
 import { normalizeMaliPhone } from "@/shared/phone";
-import type { Role } from "@/shared/auth/permissions";
 
-/** Error shape the real API will return (AppError -> { code, message }). */
-export class ApiError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+import { ApiError, http } from "@/client/http";
+
+export { ApiError };
 
 const latency = (ms = 350) => new Promise((r) => setTimeout(r, ms + Math.random() * 250));
 const clone = <T,>(v: T): T => structuredClone(v);
 const nowISO = () => new Date().toISOString();
-// Demo actor until sessions are wired (server derives it from the session).
-const ACTOR = "Aïssata Coulibaly";
+// Name stamped on records the demo store still creates (repairs, sales, stock…).
+// Set from the real session by <SessionProvider>; the server will derive it itself.
+let ACTOR = "Équipe";
+export function setMockActor(name: string) {
+  ACTOR = name;
+}
 
 function findRepair(id: string) {
   const r = db.repairs.find((x) => x.id === id);
@@ -131,16 +129,6 @@ export async function trackRepair(input: TrackingInput): Promise<TrackingResult>
 export async function getTrackingExample() {
   const r = db.repairs.find((x) => x.status === "in_repair") ?? db.repairs[0]!;
   return { code: r.code, phone: r.customer.phone };
-}
-
-// ───────────────────────────── Auth (UI only) ─────────────────────────────
-
-export async function login(input: { username: string; password: string }): Promise<StaffUser> {
-  await latency(600);
-  const user = db.staff.find((u) => u.username === input.username.trim().toLowerCase());
-  if (!user || input.password.length < 4) throw new ApiError("INVALID_CREDENTIALS", "Identifiant ou mot de passe incorrect.");
-  if (user.banned) throw new ApiError("BANNED_USER", "Ce compte a été désactivé. Contactez l'administrateur.");
-  return clone(user);
 }
 
 // ───────────────────────────── Dashboard ─────────────────────────────
@@ -243,11 +231,10 @@ export async function claimRepair(id: string, technician: { id: string; name: st
   return clone(r);
 }
 
-export async function assignRepair(id: string, technicianId: string | null): Promise<Repair> {
+export async function assignRepair(id: string, technician: { id: string; name: string } | null): Promise<Repair> {
   await latency();
   const r = findRepair(id);
-  const t = technicianId ? db.staff.find((u) => u.id === technicianId) : undefined;
-  r.technician = t ? { id: t.id, name: t.name } : undefined;
+  r.technician = technician ?? undefined;
   r.updatedAt = nowISO();
   return clone(r);
 }
@@ -568,35 +555,23 @@ export async function convertInquiry(id: string): Promise<Repair> {
   return repair;
 }
 
-// Staff & settings
+// ───────────────────────────── Staff (live: /api/staff) ─────────────────────────────
+// Sign-in, sign-out and "change my password" go through lib/auth-client.ts.
 
-export async function listStaff(): Promise<StaffUser[]> {
-  await latency();
-  return clone(db.staff);
-}
+export const listStaff = () => http.get<StaffUser[]>("/api/staff");
 
-export async function createStaff(input: StaffUserInput): Promise<StaffUser> {
-  await latency();
-  if (db.staff.some((u) => u.username === input.username)) throw new ApiError("USERNAME_TAKEN", "Cet identifiant est déjà utilisé.");
-  const u: StaffUser = { id: db.newId("usr"), name: input.name, username: input.username, role: input.role, banned: false, createdAt: nowISO() };
-  db.staff.push(u);
-  audit("create", "Utilisateur", u.username, `Compte ${u.role} créé.`);
-  return clone(u);
-}
+/** Active technicians, for the repair "assign" menu (reception + admin). */
+export const listTechnicians = () => http.get<StaffUser[]>("/api/staff/technicians");
 
-export async function updateStaff(id: string, patch: { role?: Role; banned?: boolean }): Promise<StaffUser> {
-  await latency();
-  const u = db.staff.find((x) => x.id === id)!;
-  Object.assign(u, patch);
-  if (patch.banned !== undefined) audit(patch.banned ? "ban" : "unban", "Utilisateur", u.username, patch.banned ? "Compte désactivé." : "Compte réactivé.");
-  return clone(u);
-}
+export const createStaff = (input: StaffUserInput) => http.post<StaffUser>("/api/staff", input);
 
-export async function resetStaffPassword(id: string, password: string): Promise<void> {
-  await latency();
-  void id;
-  void password;
-}
+export const updateStaff = (id: string, patch: StaffUpdateInput) =>
+  http.patch<StaffUser>(`/api/staff/${encodeURIComponent(id)}`, patch);
+
+export const resetStaffPassword = (id: string, password: string) =>
+  http.post<void>(`/api/staff/${encodeURIComponent(id)}/password`, { password });
+
+// ───────────────────────────── Settings ─────────────────────────────
 
 export async function saveSettings(input: SettingsInput): Promise<ShopSettings> {
   await latency();

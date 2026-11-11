@@ -4,6 +4,7 @@ import { nextCookies } from "better-auth/next-js";
 import { admin } from "better-auth/plugins/admin";
 import { username } from "better-auth/plugins/username";
 import { ac, roles } from "../../shared/auth/permissions";
+import { PASSWORD_MAX, PASSWORD_MIN, USERNAME_PATTERN } from "../../shared/schemas/staff";
 import { db } from "../db/client";
 import * as schema from "../db/schema";
 
@@ -30,7 +31,14 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     disableSignUp: true,
-    minPasswordLength: 8,
+    minPasswordLength: PASSWORD_MIN,
+    maxPasswordLength: PASSWORD_MAX,
+  },
+
+  session: {
+    // Shared shop computers: a week of inactivity signs staff out.
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
   },
 
   // Persist rate-limit counters in Postgres: in-memory limits reset on every
@@ -46,7 +54,11 @@ export const auth = betterAuth({
 
   plugins: [
     // Login is by username (staff may have no email address).
-    username(),
+    // Same rule as the staff form (shared/schemas/staff.ts), checked after lowercasing.
+    username({
+      usernameValidator: (value) => USERNAME_PATTERN.test(value),
+      validationOrder: { username: "post-normalization" },
+    }),
     // Roles + staff management; banning a user revokes all their sessions.
     admin({
       ac,
