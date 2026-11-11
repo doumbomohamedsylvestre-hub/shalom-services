@@ -5,12 +5,14 @@
 import { asc, eq, like } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { db } from "@/server/db/client";
-import { services as servicesTable, shopSettings, type OpeningHours } from "@/server/db/schema";
-import { notFound } from "@/server/errors";
+import { services as servicesTable, shopSettings } from "@/server/db/schema";
+import { AppError, notFound } from "@/server/errors";
+import { isAllowedImageUrl, presignServiceImageUpload } from "@/server/storage";
 import { assertCan, type StaffSession } from "@/server/auth/session";
 import type { Service, ShopSettings } from "@/shared/domain/types";
 import { normalizeMaliPhone } from "@/shared/phone";
 import { serviceSchema, settingsSchema, type ServiceInput, type SettingsInput } from "@/shared/schemas/staff";
+import { z } from "zod";
 import { audit, orUndef } from "./_shared";
 
 /** Used until the owner saves Paramètres once (or `npm run db:seed` runs). */
@@ -105,21 +107,18 @@ export async function saveSettings(session: StaffSession, input: SettingsInput):
     terms: v.terms,
     waQuoteReady: v.quoteReady,
     waRepairReady: v.repairReady,
+    hours: v.hours,
+    mapUrl: v.mapUrl || null,
+    mapEmbedUrl: v.mapEmbedUrl || null,
+    taxRate: v.taxRate,
+    salePrefix: v.salePrefix,
+    invoicePrefix: v.invoicePrefix,
     updatedBy: session.user.id,
   };
   const saved = await db.transaction(async (tx) => {
     const [row] = await tx
       .insert(shopSettings)
-      .values({
-        id: 1,
-        ...values,
-        mapUrl: current.mapUrl ?? null,
-        mapEmbedUrl: current.mapEmbedUrl ?? null,
-        hours: current.hours as OpeningHours,
-        taxRate: current.taxRate,
-        salePrefix: current.prefixes.sale,
-        invoicePrefix: current.prefixes.invoice,
-      })
+      .values({ id: 1, ...values })
       .onConflictDoUpdate({ target: shopSettings.id, set: values })
       .returning();
     await audit(tx, session, { action: "update", entity: "Paramètres", entityRef: v.name, summary: "Informations de la boutique modifiées.", before: current, after: values });
@@ -165,7 +164,9 @@ export async function saveService(session: StaffSession, input: ServiceInput, id
     durationLabel: v.durationLabel,
     isPublic: v.isPublic,
     active: v.active,
+    ...(v.image && { image: v.image }),
   };
+  if (v.image && !isAllowedImageUrl(v.image)) throw new AppError("INVALID_IMAGE", "Image non reconnue : envoyez-la depuis ce formulaire.", 422);
   const saved = await db.transaction(async (tx) => {
     if (id) {
       const [before] = await tx.select().from(servicesTable).where(eq(servicesTable.id, id)).limit(1);
@@ -183,7 +184,7 @@ export async function saveService(session: StaffSession, input: ServiceInput, id
     const sort = all.reduce((m, r) => Math.max(m, r.sort), 0) + 1;
     const [row] = await tx
       .insert(servicesTable)
-      .values({ ...fields, slug, sort, image: DEFAULT_SERVICE_IMAGE, createdBy: session.user.id })
+      .values({ ...fields, slug, sort, image: fields.image ?? DEFAULT_SERVICE_IMAGE, createdBy: session.user.id })
       .returning();
     await audit(tx, session, { action: "create", entity: "Prestation", entityId: row!.id, entityRef: v.name, summary: "Prestation ajoutée." });
     return row!;
@@ -192,3 +193,12 @@ export async function saveService(session: StaffSession, input: ServiceInput, id
   return toService(saved);
 }
 
+
+const uploadSchema = z.object({ contentType: z.string(), size: z.number() });
+
+/** Presigned upload URL for a new service image (admin). */
+export async function requestServiceImageUpload(session: StaffSession, input: { contentType: string; size: number }) {
+  assertCan(session, { settings: ["update"] });
+  const v = uploadSchema.parse(input);
+  return presignServiceImageUpload(v.contentType, v.size);
+}

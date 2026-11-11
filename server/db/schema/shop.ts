@@ -146,8 +146,9 @@ export const stockReceipts = pgTable(
     note: text("note"),
     createdAt: createdAt(),
     createdBy: createdBy(),
+    ...voidColumns(),
   },
-  (t) => [index("stock_receipts_supplier_idx").on(t.supplierId)],
+  (t) => [index("stock_receipts_supplier_idx").on(t.supplierId), index("stock_receipts_created_at_idx").on(t.createdAt)],
 );
 
 export const stockReceiptLines = pgTable(

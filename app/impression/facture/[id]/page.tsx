@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { LinesTableA4, PrintFrame, ShopHeaderA4, TotalRow } from "@/components/print/print-kit";
+import { LinesTableA4, PrintFrame, ShopHeaderA4, TotalRow, TaxNote } from "@/components/print/print-kit";
 import { useRepair, useSettings } from "@/client/hooks";
 import { PAYMENT_METHOD } from "@/shared/domain/labels";
 import { balanceDue, linesTotal, paidTotal } from "@/shared/domain/money";
@@ -18,7 +18,12 @@ export default function InvoicePrint() {
     <PrintFrame format="a4" ready={!!r && !!s}>
       {r && s && (
         <div className="flex flex-col gap-8">
-          <ShopHeaderA4 settings={s} title="Facture" number={r.invoiceNumber ?? `Proforma ${r.code}`} date={formatDate(r.updatedAt)} />
+          <ShopHeaderA4
+            settings={s}
+            title={r.invoiceNumber ? "Facture" : "Facture proforma"}
+            number={r.invoiceNumber ?? r.code}
+            date={formatDate(r.events.find((e) => e.to === "picked_up")?.at ?? r.updatedAt)}
+          />
           <div className="grid grid-cols-2 gap-8">
             <div>
               <p className="text-xs text-neutral-500 uppercase">Facturé à</p>
@@ -38,7 +43,7 @@ export default function InvoicePrint() {
             <TotalRow label="Total TTC" value={linesTotal(r.lines)} />
             <TotalRow label="Payé" value={paidTotal(r.payments)} />
             <TotalRow label="Reste à payer" value={balanceDue(r.lines, r.payments)} strong />
-            <p className="text-right text-xs text-neutral-500">TVA non applicable</p>
+            <TaxNote total={linesTotal(r.lines)} rate={s.taxRate} />
           </div>
           <div>
             <p className="mb-2 text-xs text-neutral-500 uppercase">Règlements</p>

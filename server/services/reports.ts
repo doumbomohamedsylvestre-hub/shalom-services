@@ -14,40 +14,7 @@ import { db } from "@/server/db/client";
 import { expenseCategories, expenses, payments, products, repairLines, repairStatusEvents, repairs, saleLines, sales, user } from "@/server/db/schema";
 import { assertCan, type StaffSession } from "@/server/auth/session";
 import type { ReportData, ReportRange, RepairStatus } from "@/shared/domain/types";
-
-const DAY = 86400_000;
-
-type Bucket = { start: Date; end: Date; label: string };
-
-function startOfUtcDay(d: Date) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
-
-/** Consecutive buckets covering the range and ending today (inclusive). */
-export function buckets(range: ReportRange, now = new Date()): Bucket[] {
-  const today = startOfUtcDay(now);
-  const dayFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" });
-  const monthFmt = new Intl.DateTimeFormat("fr-FR", { month: "short", timeZone: "UTC" });
-  if (range === "12m") {
-    return Array.from({ length: 12 }, (_, i) => {
-      const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - (11 - i), 1));
-      const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
-      return { start, end, label: monthFmt.format(start) };
-    });
-  }
-  if (range === "90d") {
-    const first = new Date(today.getTime() - (13 * 7 - 1) * DAY);
-    return Array.from({ length: 13 }, (_, i) => {
-      const start = new Date(first.getTime() + i * 7 * DAY);
-      return { start, end: new Date(start.getTime() + 7 * DAY), label: dayFmt.format(start) };
-    });
-  }
-  const days = range === "7d" ? 7 : 30;
-  return Array.from({ length: days }, (_, i) => {
-    const start = new Date(today.getTime() - (days - 1 - i) * DAY);
-    return { start, end: new Date(start.getTime() + DAY), label: dayFmt.format(start) };
-  });
-}
+import { buckets } from "./report-buckets";
 
 const hours = (ms: number) => Math.round(ms / 3600_000);
 
@@ -133,8 +100,7 @@ export async function getReport(session: StaffSession, range: ReportRange): Prom
       .limit(5),
     db
       .select({ value: sql<number>`coalesce(sum(${products.qtyOnHand} * ${products.avgCost}), 0)::int` })
-      .from(products)
-      .where(eq(products.active, true)),
+      .from(products),
   ]);
 
   const revenue = bs.map((b) => ({ label: b.label, repairs: 0, sales: 0 }));

@@ -24,9 +24,17 @@ npm run db:generate    # drizzle-kit generate -> drizzle/<UTC timestamp>_<name>/
 npm run db:migrate     # apply migrations to DATABASE_URL_UNPOOLED from .env.local
 npm run db:seed        # idempotent: branch, first admin, settings, services, categories (+ SEED_STAFF_PASSWORD / SEED_SAMPLE_CATALOG=1 dev samples)
 npm run db:studio
+
+npm test                 # Vitest unit tests (pure rules, no database)
+npm run test:integration # Vitest service-layer tests against the Neon "test" branch (.env.test.local)
+npm run test:e2e         # builds into .next-e2e, then Playwright flows on :3100 against the "test" branch
 ```
 
-There are no tests yet. The plan specifies Vitest for service-layer rules and Playwright for core flows.
+Tests:
+- `tests/unit`: money, weighted average cost, status machine, permissions, schemas, report periods. No env needed.
+- `tests/integration`: real services in transactions (stock invariants, oversell under concurrency, voids, repair flow, technician scope). Needs `.env.test.local` (gitignored) pointing at the Neon branch `test` (br-dawn-cake-bblk2rkd, child of `dev`). Never point it at `dev` or `main`.
+- `tests/e2e`: login, intake → repair → payment → pickup → public tracking, counter sale + receipt, inquiry → ticket. `global-setup.ts` creates fresh accounts per run on the test branch.
+- This machine has a broken IPv6 route to Neon: the db client prefers IPv4 outside production (`server/db/client.ts`), and one-off scripts may need `NODE_OPTIONS=--dns-result-order=ipv4first`.
 
 For agent-driven migrations, prefer `npx drizzle-kit generate --name <name> --output json`, with `--explain` for a dry run. Note that `migrate` does not accept `--output`.
 
@@ -54,6 +62,7 @@ There is no `src/` directory. `@/*` maps to the repo root.
   - `server/services/*` is the only place for business logic and authorization. Each service function takes the session, checks permissions (`assertCan`), validates with the shared Zod schema, runs in a transaction, and writes `audit_log` (`_shared.ts` → `audit()`) for money/stock/settings/staff changes. Route handlers under `app/api/*` only call `requireSession()` + a service inside `handle()`; pages never touch `db`.
   - Stock changes go through `moveStock()` (`inventory.ts`): ledger row + `qty_on_hand` in one transaction, guarded so stock never goes below 0; lock rows first with `lockProducts()`. Sale prices come from the catalogue, never the client; a lower price is a discount (recorded with who gave it). Sale numbers come from `document_counters` (gap-free).
 - `shared/`: code imported by both server and client. `shared/auth/permissions.ts` is the **single role → permission map** (admin / reception / technician plus domain statements such as `repair:claim` and `payment:void`). It drives the admin plugin, the client (`lib/auth-client.ts`), and later `assertCan`. Change permissions here only.
+- `server/storage.ts`: Neon object storage (S3 API) for service images. The browser compresses (`client/compress-image.ts`), gets a 5-minute presigned PUT from `/api/uploads/service-image`, uploads directly, and the service row stores the public URL. Env: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `STORAGE_BUCKET` (a `public_read` bucket per Neon branch). `next.config.ts` allows those hosts in `images.remotePatterns`.
 - `scripts/`:
   - `migrate-on-deploy.mjs` runs inside `npm run build`. It migrates only on Vercel: always in production, and in preview only if `MIGRATE_ON_PREVIEW=1`.
   - `seed.ts` runs via `tsx`. It imports server modules dynamically *after* `loadEnvConfig`, because the db client reads env at import time.

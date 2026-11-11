@@ -25,6 +25,7 @@ import type {
   ShopSettings,
   StaffUser,
   StockMovement,
+  StockReceipt,
   Supplier,
   TrackingResult,
 } from "@/shared/domain/types";
@@ -129,6 +130,10 @@ export const adjustStock = (input: StockAdjustmentInput) => http.post<Product>("
 
 export const receiveStock = (input: StockReceiptInput) => http.post<void>("/api/stock/receipts", input);
 
+export const listReceipts = () => http.get<StockReceipt[]>("/api/stock/receipts");
+
+export const voidReceipt = (id: string, reason: string) => http.post<StockReceipt>(`/api/stock/receipts/${enc(id)}/void`, { reason });
+
 export const listMovements = (productId?: string) => http.get<StockMovement[]>(`/api/stock/movements${qs({ productId })}`);
 
 export const listSuppliers = () => http.get<Supplier[]>("/api/suppliers");
@@ -185,6 +190,19 @@ export const saveSettings = (input: SettingsInput) => http.put<ShopSettings>("/a
 
 export const saveService = (input: ServiceInput, id?: string) =>
   id ? http.patch<Service>(`/api/services/${enc(id)}`, input) : http.post<Service>("/api/services", input);
+
+/** Compresses the photo, uploads it straight to object storage, returns its public URL. */
+export async function uploadServiceImage(file: File): Promise<string> {
+  const { compressImage } = await import("@/client/compress-image");
+  const blob = await compressImage(file);
+  const { uploadUrl, publicUrl, headers } = await http.post<{ uploadUrl: string; publicUrl: string; headers: Record<string, string> }>(
+    "/api/uploads/service-image",
+    { contentType: blob.type, size: blob.size },
+  );
+  const res = await fetch(uploadUrl, { method: "PUT", body: blob, headers }).catch(() => null);
+  if (!res?.ok) throw new ApiError("UPLOAD_FAILED", "L'envoi de l'image a échoué. Vérifiez la connexion et réessayez.");
+  return publicUrl;
+}
 
 export const listAudit = () => http.get<AuditEntry[]>("/api/audit");
 

@@ -8,7 +8,7 @@ export const SITE = {
   tagline: "Réparation • Entretien • Accessoires",
   description:
     "Réparation, entretien et accessoires pour smartphones et tablettes à Sénou, Bamako. Diagnostic rapide, devis clair, suivi de votre réparation en ligne.",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://shalom-services-azure.vercel.app",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://shalom-services-mali.vercel.app",
 } as const;
 
 export const ROUTES = {

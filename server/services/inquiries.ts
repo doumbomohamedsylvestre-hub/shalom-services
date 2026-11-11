@@ -13,6 +13,7 @@ import { assertCan, type StaffSession } from "@/server/auth/session";
 import type { Inquiry, InquiryStatus, Repair, TrackingResult } from "@/shared/domain/types";
 import { normalizeMaliPhone } from "@/shared/phone";
 import { inquirySchema, trackingSchema, type InquiryInput, type TrackingInput } from "@/shared/schemas/public";
+import { maskName } from "@/shared/domain/privacy";
 import { audit, orUndef } from "./_shared";
 import { createRepairTx, getRepair } from "./repairs";
 
@@ -56,11 +57,6 @@ export async function submitInquiry(input: InquiryInput, ip: string): Promise<{ 
   return { id: row!.id };
 }
 
-/** "Mamadou Traoré" → "Mamadou T." */
-function maskName(name: string) {
-  const [first = "", ...rest] = name.trim().split(/\s+/);
-  return `${first} ${rest.map((p) => `${p[0]?.toUpperCase()}.`).join(" ")}`.trim();
-}
 
 export async function trackRepair(input: TrackingInput, ip: string): Promise<TrackingResult> {
   const v = trackingSchema.parse(input);

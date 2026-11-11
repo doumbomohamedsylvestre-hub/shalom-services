@@ -105,8 +105,16 @@ export const useAdjustStock = () =>
 export const useReceiveStock = () =>
   useAppMutation({
     fn: api.receiveStock,
-    invalidate: [qk.products.all, qk.movements.all, qk.suppliers, qk.summary, qk.reports.all, qk.audit],
+    invalidate: [qk.products.all, qk.movements.all, qk.suppliers, qk.receipts, qk.summary, qk.reports.all, qk.audit],
     success: "Réception enregistrée, stock et coûts mis à jour.",
+  });
+export const useReceipts = (opts?: { enabled?: boolean }) =>
+  useQuery({ queryKey: qk.receipts, queryFn: api.listReceipts, enabled: opts?.enabled });
+export const useVoidReceipt = () =>
+  useAppMutation({
+    fn: (v: { id: string; reason: string }) => api.voidReceipt(v.id, v.reason),
+    invalidate: [qk.receipts, qk.products.all, qk.movements.all, qk.suppliers, qk.summary, qk.reports.all, qk.audit],
+    success: "Réception annulée, stock retiré.",
   });
 export const useMovements = (productId?: string) =>
   useQuery({ queryKey: qk.movements.list(productId), queryFn: () => api.listMovements(productId) });

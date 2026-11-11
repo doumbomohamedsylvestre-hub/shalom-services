@@ -22,6 +22,7 @@ export const qk = {
   products: { all: ["products"] as const, categories: ["products", "categories"] as const },
   movements: { all: ["movements"] as const, list: (productId?: string) => ["movements", productId ?? "all"] as const },
   suppliers: ["suppliers"] as const,
+  receipts: ["receipts"] as const,
   sales: { all: ["sales"] as const, detail: (id: string) => ["sales", "detail", id] as const },
   expenses: { all: ["expenses"] as const, categories: ["expenses", "categories"] as const },
   inquiries: ["inquiries"] as const,

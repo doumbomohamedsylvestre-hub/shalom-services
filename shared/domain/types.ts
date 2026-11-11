@@ -178,6 +178,18 @@ export type StockMovement = {
   reason?: string;
 };
 
+export type StockReceipt = {
+  id: ID;
+  supplier: Pick<Supplier, "id" | "name">;
+  lines: { productId: ID; productName: string; qty: number; unitCost: XOF }[];
+  totalCost: XOF;
+  amountPaid: XOF;
+  note?: string;
+  by: string;
+  at: ISODate;
+  voided?: { at: ISODate; by: string; reason: string };
+};
+
 export type Sale = {
   id: ID;
   number: string;

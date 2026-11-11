@@ -2,7 +2,7 @@
 
 import { PrinterIcon, XIcon } from "lucide-react";
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -133,3 +133,24 @@ export function ThermalHeader({ settings }: { settings: ShopSettings }) {
 export function Dashed() {
   return <div className="my-2 border-b border-dashed border-black" />;
 }
+
+/** Prices are VAT-inclusive (TTC). Shows the VAT share when the rate is set in Paramètres. */
+export function TaxNote({ total, rate }: { total: number; rate: number }) {
+  if (!rate) return <p className="text-right text-xs text-neutral-500">TVA non applicable</p>;
+  const vat = Math.round((total * rate) / (100 + rate));
+  return (
+    <p className="text-right text-xs text-neutral-500">
+      dont TVA {rate} % : {formatXOF(vat)}
+    </p>
+  );
+}
+
+/** The site address the customer should visit, from the host actually serving this page. */
+export function useSiteHost(fallback: string) {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => window.location.host,
+    () => fallback.replace(/^https?:\/\//, ""),
+  );
+}
+const noopSubscribe = () => () => {};

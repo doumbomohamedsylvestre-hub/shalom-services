@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { Dashed, PrintFrame, ThermalHeader } from "@/components/print/print-kit";
+import { Dashed, PrintFrame, ThermalHeader, useSiteHost } from "@/components/print/print-kit";
 import { useRepair, useSettings } from "@/client/hooks";
 import { PAYMENT_METHOD, REPAIR_MODE } from "@/shared/domain/labels";
 import { linesTotal } from "@/shared/domain/money";
@@ -15,6 +15,7 @@ export default function TicketPrint() {
   const settings = useSettings();
   const r = repair.data;
   const s = settings.data;
+  const host = useSiteHost(SITE.url);
   return (
     <PrintFrame format="thermal" ready={!!r && !!s}>
       {r && s && (
@@ -40,15 +41,17 @@ export default function TicketPrint() {
           {r.accessories && <p>Laissé avec : {r.accessories}</p>}
           <p>Prise en charge : {REPAIR_MODE[r.mode].label}</p>
           {r.lines.length > 0 && <p>Montant convenu : {formatXOF(linesTotal(r.lines))}</p>}
-          {r.payments.map((p) => (
-            <p key={p.id}>
-              Acompte : {formatXOF(p.amount)} ({PAYMENT_METHOD[p.method]})
-            </p>
-          ))}
+          {r.payments
+            .filter((p) => !p.voided)
+            .map((p) => (
+              <p key={p.id}>
+                {p.kind === "deposit" ? "Acompte" : "Paiement"} : {formatXOF(p.amount)} ({PAYMENT_METHOD[p.method]})
+              </p>
+            ))}
           {r.estimatedReadyAt && <p>Prêt estimé : {formatDateTime(r.estimatedReadyAt)}</p>}
           <Dashed />
           <p className="text-center">Suivez votre réparation :</p>
-          <p className="text-center font-bold">{SITE.url.replace(/^https?:\/\//, "")}/suivi</p>
+          <p className="text-center font-bold break-all">{host}/suivi</p>
           <p className="text-center">avec ce code et votre numéro.</p>
           <Dashed />
           <p className="text-[9px] leading-tight">{s.terms}</p>
