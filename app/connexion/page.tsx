@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { Logo } from "@/components/brand/logo";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getStaffSession } from "@/server/auth/session";
+import { ROUTES } from "@/shared/site";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Connexion", robots: { index: false } };
@@ -25,12 +30,31 @@ export default function LoginPage() {
             <h1 className="text-3xl font-semibold tracking-[-0.025em]">Connexion</h1>
             <p className="text-muted-foreground">Accès réservé au personnel de Shalom Service.</p>
           </div>
-          <LoginForm />
+          <Suspense fallback={<FormSkeleton />}>
+            <RedirectIfSignedIn />
+            <LoginForm />
+          </Suspense>
           <p className="text-xs leading-relaxed text-muted-foreground">
             Identifiant oublié ou compte bloqué ? Demandez à l&apos;administrateur de réinitialiser votre accès.
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Already signed in (valid session): go straight to the back office. */
+async function RedirectIfSignedIn() {
+  if (await getStaffSession()) redirect(ROUTES.dashboard);
+  return null;
+}
+
+function FormSkeleton() {
+  return (
+    <div className="flex flex-col gap-5">
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-11 w-full" />
     </div>
   );
 }

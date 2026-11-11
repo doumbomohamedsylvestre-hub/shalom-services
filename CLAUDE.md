@@ -67,7 +67,11 @@ The whole UI runs on an in-memory demo store, so it can be integrated by swappin
   - `app/impression/*`: print layouts (80mm `ticket`/`recu`, A4 `devis`/`facture`).
 - **Data flow:** screens → `client/hooks/index.ts` (TanStack Query hooks; mutations go through `useAppMutation`, which shows the French toast and invalidates `client/query-keys.ts` roots) → `client/api.ts` → `client/mock/data.ts`. **Integration = rewrite the bodies in `client/api.ts`** to call the route handlers through `client/http.ts`. Signatures, hooks and screens stay as they are. Only `client/api.ts` may import the mock store.
 - **Public pages** read data through `lib/public-content.ts` (`"use cache"` + `cacheTag("settings" | "services")`). When the backend lands, point these at the service layer and call `revalidateTag` on admin edits.
-- **Demo session:** `client/session.tsx` (`useSession()` → `{ user, can }`). `can()` already uses the real permission map. The role switcher in the sidebar footer and the login form are demo-only. Replace the provider body with `authClient.useSession()` and add the server-side redirect in the dashboard layout.
+- **Auth (live, integrated):**
+  - `proxy.ts` does an optimistic cookie check on `/tableau-de-bord` and `/impression` (→ `/connexion?next=…`). The real check is `requireStaffPage()` in the dashboard and print layouts, and `requireSession()` + `assertCan()` in every API handler (`server/auth/session.ts`).
+  - Login: `authClient.signIn.username` (`app/connexion`). Sign-out and "Changer mon mot de passe" live in the sidebar account menu.
+  - `client/session.tsx` (`useSession()` → `{ user, can, signOut }`) gets the user from the server-validated session; `can()` only hides UI.
+  - Staff management: `server/services/staff.ts` via `/api/staff/*` (Better Auth admin API). Admins cannot change their own role, deactivate or reset themselves. Errors are `AppError` (`server/errors.ts`) → `{ code, message }`; `client/http.ts` sends 401s back to the login page.
 - **Shared contracts:**
   - `shared/domain/types.ts`: domain types matching SPEC §3.
   - `shared/domain/labels.ts`: French labels and status tones.
@@ -84,7 +88,7 @@ The whole UI runs on an in-memory demo store, so it can be integrated by swappin
   - Never read `Date`/`Date.now()` in render; use `useNow()` (`client/use-now.ts`) or `useIsClient()`.
   - Client hooks reading the URL (`useSearchParams`, `usePathname` in dynamic routes) need a `<Suspense>` boundary. The dashboard layout already wraps everything in one.
 - **Layout:** responsive grids start with `grid-cols-1` (`minmax(0,1fr)`). Without it, long truncated rows overflow on phones.
-- **Demo-only bits to remove at integration:** the "Démo" tracking autofill (`components/site/tracking.tsx`), the login hint, the role switcher, and the placeholder phone numbers in `client/mock/data.ts` settings.
+- **Demo-only bits to remove at integration:** the "Démo" tracking autofill (`components/site/tracking.tsx`) and the placeholder phone numbers in `client/mock/data.ts` settings. Records the mock store still creates are stamped with the signed-in user's name (`setMockActor`).
 
 ## Design: premium, Apple-inspired
 

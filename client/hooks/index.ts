@@ -34,7 +34,7 @@ export const useClaimRepair = () =>
   });
 export const useAssignRepair = () =>
   useAppMutation({
-    fn: (v: { id: string; technicianId: string | null }) => api.assignRepair(v.id, v.technicianId),
+    fn: (v: { id: string; technician: { id: string; name: string } | null }) => api.assignRepair(v.id, v.technician),
     invalidate: repairKeys,
     success: "Technicien mis à jour.",
   });
@@ -158,7 +158,8 @@ export const useConvertInquiry = () =>
   });
 
 // ── Staff, settings, services, audit, reports
-export const useStaff = () => useQuery({ queryKey: qk.staff, queryFn: api.listStaff });
+export const useStaff = (opts?: { enabled?: boolean }) => useQuery({ queryKey: qk.staff, queryFn: api.listStaff, enabled: opts?.enabled });
+export const useTechnicians = () => useQuery({ queryKey: qk.technicians, queryFn: api.listTechnicians });
 export const useCreateStaff = () =>
   useAppMutation({ fn: api.createStaff, invalidate: [qk.staff, qk.audit], success: (u) => `Compte « ${u.username} » créé.` });
 export const useUpdateStaff = () =>

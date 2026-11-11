@@ -1,65 +1,45 @@
 "use client";
 
 /**
- * DEMO session for the front end, until Better Auth is wired.
+ * The signed-in staff member, for client components.
  *
- * Integration: replace the provider body with `authClient.useSession()`
- * (lib/auth-client.ts) and keep the same `useSession()` return shape, so
- * screens and navigation keep working unchanged. `can()` already uses the
- * real permission map from shared/auth/permissions.ts.
+ * The dashboard layout validates the session on the server (Better Auth,
+ * server/auth/session.ts) and passes the user in, so `useSession()` never
+ * has a loading state. `can()` uses the same permission map as the server's
+ * `assertCan`; it only hides UI, the API enforces it again.
  */
-import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
-import { roles, type Role } from "@/shared/auth/permissions";
+import { useRouter } from "next/navigation";
+import { createContext, useCallback, useContext, useEffect, useMemo } from "react";
+import { setMockActor } from "@/client/api";
+import { authClient } from "@/lib/auth-client";
+import { roles } from "@/shared/auth/permissions";
 import type { StaffUser } from "@/shared/domain/types";
-
-const DEMO_USERS: Record<Role, StaffUser> = {
-  admin: { id: "usr_admin", name: "Moussa Traoré", username: "admin", role: "admin", banned: false, createdAt: "" },
-  reception: { id: "usr_rec1", name: "Aïssata Coulibaly", username: "aissata", role: "reception", banned: false, createdAt: "" },
-  technician: { id: "usr_tech1", name: "Ibrahim Diarra", username: "ibrahim", role: "technician", banned: false, createdAt: "" },
-};
+import { ROUTES } from "@/shared/site";
 
 type Statements = Parameters<(typeof roles)["admin"]["authorize"]>[0];
 
 type SessionValue = {
   user: StaffUser;
   can: (permissions: Statements) => boolean;
-  setDemoRole: (role: Role) => void;
+  signOut: () => Promise<void>;
 };
-
-const KEY = "shalom.demoRole";
-const listeners = new Set<() => void>();
-function readRole(): Role {
-  try {
-    const v = localStorage.getItem(KEY);
-    if (v === "admin" || v === "reception" || v === "technician") return v;
-  } catch {}
-  return "admin";
-}
 
 const SessionContext = createContext<SessionValue | null>(null);
 
-export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const role = useSyncExternalStore(
-    (cb) => {
-      listeners.add(cb);
-      return () => listeners.delete(cb);
-    },
-    readRole,
-    () => "admin" as Role,
-  );
-  const setDemoRole = useCallback((r: Role) => {
-    try {
-      localStorage.setItem(KEY, r);
-    } catch {}
-    listeners.forEach((l) => l());
-  }, []);
+export function SessionProvider({ user, children }: { user: StaffUser; children: React.ReactNode }) {
+  const router = useRouter();
+  useEffect(() => setMockActor(user.name), [user.name]);
+
+  const signOut = useCallback(async () => {
+    const { error } = await authClient.signOut();
+    if (error) throw new Error(error.message ?? "sign-out failed");
+    router.replace(ROUTES.login);
+    router.refresh();
+  }, [router]);
+
   const value = useMemo<SessionValue>(
-    () => ({
-      user: DEMO_USERS[role],
-      can: (p) => roles[role].authorize(p).success,
-      setDemoRole,
-    }),
-    [role, setDemoRole],
+    () => ({ user, can: (p) => roles[user.role].authorize(p).success, signOut }),
+    [user, signOut],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

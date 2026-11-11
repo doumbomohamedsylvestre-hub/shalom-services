@@ -1,11 +1,52 @@
 import { z } from "zod";
 import { amountXOF, maliPhone, optionalText, paymentMethod, requiredText } from "./common";
 
+/** Staff usernames. Also the Better Auth username validator (server/auth/auth.ts). */
+export const USERNAME_PATTERN = /^[a-z0-9._-]{3,30}$/;
+export const PASSWORD_MIN = 8;
+/** Better Auth hashes at most 128 characters by default. */
+export const PASSWORD_MAX = 128;
+
+const newPassword = z
+  .string()
+  .min(PASSWORD_MIN, `${PASSWORD_MIN} caractères minimum.`)
+  .max(PASSWORD_MAX, `${PASSWORD_MAX} caractères maximum.`);
+
 export const loginSchema = z.object({
   username: requiredText("L'identifiant", 40),
   password: z.string().min(1, "Le mot de passe est requis."),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
+
+/** Signed-in staff member changing their own password. */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Le mot de passe actuel est requis."),
+    newPassword,
+    confirmPassword: z.string(),
+  })
+  .refine((v) => v.newPassword === v.confirmPassword, {
+    message: "Les deux mots de passe ne correspondent pas.",
+    path: ["confirmPassword"],
+  })
+  .refine((v) => v.newPassword !== v.currentPassword, {
+    message: "Choisissez un mot de passe différent de l'actuel.",
+    path: ["newPassword"],
+  });
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+/** Admin setting a new password for a staff member. */
+export const resetPasswordSchema = z.object({ password: newPassword });
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+/** Admin changing a staff member's role or (de)activating the account. */
+export const staffUpdateSchema = z
+  .object({
+    role: z.enum(["admin", "reception", "technician"]).optional(),
+    banned: z.boolean().optional(),
+  })
+  .refine((v) => v.role !== undefined || v.banned !== undefined, "Rien à modifier.");
+export type StaffUpdateInput = z.infer<typeof staffUpdateSchema>;
 
 export const customerSchema = z.object({
   name: requiredText("Le nom", 80),
@@ -123,9 +164,9 @@ export const staffUserSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .regex(/^[a-z0-9._-]{3,30}$/, "3 à 30 caractères : lettres, chiffres, point, tiret."),
+    .regex(USERNAME_PATTERN, "3 à 30 caractères : lettres minuscules, chiffres, point, tiret, tiret bas."),
   role: z.enum(["admin", "reception", "technician"]),
-  password: z.string().min(8, "8 caractères minimum."),
+  password: newPassword,
 });
 export type StaffUserInput = z.infer<typeof staffUserSchema>;
 

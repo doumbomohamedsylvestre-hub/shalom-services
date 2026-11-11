@@ -2,19 +2,30 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { Skeleton } from "@/components/ui/skeleton";
+import { requireStaffPage } from "@/server/auth/session";
+import { ROUTES } from "@/shared/site";
 
 export const metadata: Metadata = {
   title: { default: "Tableau de bord", template: "%s | Shalom Service" },
   robots: { index: false, follow: false },
 };
 
-/** The back office is per-user and URL-driven: it streams in after a static skeleton. */
+/**
+ * The back office is per-user: the session is read at request time, so the
+ * shell streams in behind a static skeleton. Signed-out or deactivated staff
+ * are sent to the login page before anything renders.
+ */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <Suspense fallback={<ShellSkeleton />}>
-      <DashboardShell>{children}</DashboardShell>
+      <AuthenticatedShell>{children}</AuthenticatedShell>
     </Suspense>
   );
+}
+
+async function AuthenticatedShell({ children }: { children: React.ReactNode }) {
+  const { user } = await requireStaffPage(ROUTES.dashboard);
+  return <DashboardShell user={user}>{children}</DashboardShell>;
 }
 
 function ShellSkeleton() {

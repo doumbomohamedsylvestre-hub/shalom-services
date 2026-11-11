@@ -67,12 +67,18 @@ function TextField({
   placeholder,
   autoComplete,
   inputMode,
+  autoCapitalize,
+  autoCorrect,
+  spellCheck,
   ...base
 }: BaseProps & {
   type?: React.HTMLInputTypeAttribute;
   placeholder?: string;
   autoComplete?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  autoCapitalize?: string;
+  autoCorrect?: string;
+  spellCheck?: boolean;
 }) {
   const { field, errors, invalid } = useFieldState();
   return (
@@ -84,6 +90,9 @@ function TextField({
         placeholder={placeholder}
         autoComplete={autoComplete}
         inputMode={inputMode}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
+        spellCheck={spellCheck}
         value={(field.state.value as string) ?? ""}
         onBlur={field.handleBlur}
         onChange={(e) => field.handleChange(e.target.value)}
