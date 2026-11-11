@@ -42,5 +42,7 @@ export function errorResponse(err: unknown) {
     return NextResponse.json({ code: "BAD_JSON", message: "Requête invalide." }, { status: 400 });
   }
   console.error("[api] unexpected error", err);
-  return NextResponse.json({ code: "INTERNAL", message: "Une erreur est survenue. Réessayez." }, { status: 500 });
+  // Development only: surface the cause to make local debugging possible.
+  const detail = process.env.NODE_ENV === "development" ? String((err as { cause?: unknown })?.cause ?? err) : undefined;
+  return NextResponse.json({ code: "INTERNAL", message: "Une erreur est survenue. Réessayez.", detail }, { status: 500 });
 }

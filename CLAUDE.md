@@ -58,15 +58,15 @@ There is no `src/` directory. `@/*` maps to the repo root.
   - `migrate-on-deploy.mjs` runs inside `npm run build`. It migrates only on Vercel: always in production, and in preview only if `MIGRATE_ON_PREVIEW=1`.
   - `seed.ts` runs via `tsx`. It imports server modules dynamically *after* `loadEnvConfig`, because the db client reads env at import time.
 
-## Front end (partly integrated)
+## Front end (fully integrated)
 
-The whole UI runs on an in-memory demo store, so it can be integrated by swapping one layer:
+Every screen reads and writes the database through one client layer:
 - **Routes:**
   - `app/(public)`: French site with Accueil, `services`, `a-propos`, `contact`, `devis` and `suivi`.
   - `app/connexion`: login page.
   - `app/(dashboard)/tableau-de-bord/*`: the back office.
   - `app/impression/*`: print layouts (80mm `ticket`/`recu`, A4 `devis`/`facture`).
-- **Data flow:** screens → `client/hooks/index.ts` (TanStack Query hooks; mutations go through `useAppMutation`, which shows the French toast and invalidates `client/query-keys.ts` roots) → `client/api.ts` → `client/http.ts` → `app/api/*` for the **live** modules (staff, settings + services, customers, stock, suppliers, sales, expenses, audit log, dashboard boutique figures), or `client/mock/data.ts` for the **still-demo** ones (repairs, inquiries, public tracking, reports). **Integration = rewrite the bodies in `client/api.ts`** to call the route handlers through `client/http.ts`. Signatures, hooks and screens stay as they are. Only `client/api.ts` may import the mock store.
+- **Data flow:** screens → `client/hooks/index.ts` (TanStack Query hooks; mutations go through `useAppMutation`, which shows the French toast and invalidates `client/query-keys.ts` roots) → `client/api.ts` → `client/http.ts` → `app/api/*` → `server/services/*`. There is no demo store any more. Public endpoints (no session) live under `app/api/public/*` (inquiry forms, tracking) and are protected by the honeypot and the per-IP limit in `public_rate_limits`.
 - **Public pages** read data through `lib/public-content.ts` (`"use cache"` + `cacheTag("settings" | "services")`), straight from `server/services/settings.ts`. Admin edits call `revalidateTag(tag, { expire: 0 })`.
 - **Auth (live, integrated):**
   - `proxy.ts` does an optimistic cookie check on `/tableau-de-bord` and `/impression` (→ `/connexion?next=…`). The real check is `requireStaffPage()` in the dashboard and print layouts, and `requireSession()` + `assertCan()` in every API handler (`server/auth/session.ts`).
@@ -89,7 +89,8 @@ The whole UI runs on an in-memory demo store, so it can be integrated by swappin
   - Never read `Date`/`Date.now()` in render; use `useNow()` (`client/use-now.ts`) or `useIsClient()`.
   - Client hooks reading the URL (`useSearchParams`, `usePathname` in dynamic routes) need a `<Suspense>` boundary. The dashboard layout already wraps everything in one.
 - **Layout:** responsive grids start with `grid-cols-1` (`minmax(0,1fr)`). Without it, long truncated rows overflow on phones.
-- **Demo-only bits to remove at integration:** the "Démo" tracking autofill (`components/site/tracking.tsx`) and the placeholder phone numbers in `client/mock/data.ts` settings. Records the mock store still creates are stamped with the signed-in user's name (`setMockActor`).
+- **Repairs** (`server/services/repairs.ts`): the status machine is `shared/domain/repair-flow.ts`, enforced server-side. Technicians only see the unclaimed queue and their own tickets, must claim before changing anything, and cannot record quote decisions or hand a device over. Parts leave stock at their frozen average cost; removed lines are soft-deleted and restocked. Pickup requires a zero balance and assigns a sequential invoice number (`document_counters`).
+- **Reports** (`server/services/reports.ts`) are computed from payments, sale/repair lines, expenses and status events; definitions are in the file header.
 
 ## Design: premium, Apple-inspired
 

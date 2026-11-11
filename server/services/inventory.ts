@@ -163,6 +163,7 @@ type MovementInput = {
   reason?: string;
   receiptId?: string;
   saleId?: string;
+  repairId?: string;
   /** New weighted average cost, when the movement changes it (receipts). */
   newAvgCost?: number;
 };
@@ -192,6 +193,7 @@ export async function moveStock(tx: Tx, session: StaffSession, m: MovementInput)
     reason: m.reason,
     receiptId: m.receiptId,
     saleId: m.saleId,
+    repairId: m.repairId,
     createdBy: session.user.id,
   });
 }

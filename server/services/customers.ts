@@ -1,28 +1,34 @@
-/**
- * Customers: one per Mali phone number (SPEC ASSUMPTION 8). Repairs are
- * linked in the repairs phase; until then a customer's history shows sales.
- */
+/** Customers: one per Mali phone number (SPEC ASSUMPTION 8), with their repairs and purchases. */
 import { and, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
 import { db } from "@/server/db/client";
-import { customers as customersTable, payments, sales } from "@/server/db/schema";
+import { customers as customersTable, payments, repairs, sales } from "@/server/db/schema";
 import { AppError, notFound } from "@/server/errors";
 import { assertCan, can, type StaffSession } from "@/server/auth/session";
 import type { Customer, Repair, Sale } from "@/shared/domain/types";
 import { normalizeMaliPhone } from "@/shared/phone";
 import { customerSchema, type CustomerInput } from "@/shared/schemas/staff";
 import { isUniqueViolation, orUndef } from "./_shared";
+import { repairsOfCustomer } from "./repairs";
 import { loadSales } from "./sales";
+
+/** Money totals are hidden from technicians (no finance views). */
+const canSeeMoney = (session: StaffSession) => can(session, { payment: ["read"] });
 
 type Row = typeof customersTable.$inferSelect;
 
-/** Money actually received from this customer (non-voided payments of non-voided sales). */
-const spentSql = sql<number>`coalesce((
+/** Money actually received from this customer: non-voided payments of their repairs and non-voided sales. */
+const spentSql = sql<number>`(coalesce((
   select sum(${payments.amount}) from ${payments}
   join ${sales} on ${sales.id} = ${payments.saleId}
   where ${sales.customerId} = ${customersTable.id} and ${sales.voidedAt} is null and ${payments.voidedAt} is null
-), 0)::int`;
+), 0) + coalesce((
+  select sum(${payments.amount}) from ${payments}
+  join ${repairs} on ${repairs.id} = ${payments.repairId}
+  where ${repairs.customerId} = ${customersTable.id} and ${payments.voidedAt} is null
+), 0))::int`;
+const repairsCountSql = sql<number>`(select count(*) from ${repairs} where ${repairs.customerId} = ${customersTable.id})::int`;
 
-function toCustomer(row: Row, totalSpent: number): Customer {
+function toCustomer(row: Row, totalSpent: number, repairsCount = 0): Customer {
   return {
     id: row.id,
     name: row.name,
@@ -30,7 +36,7 @@ function toCustomer(row: Row, totalSpent: number): Customer {
     altPhone: orUndef(row.altPhone),
     notes: orUndef(row.notes),
     createdAt: row.createdAt.toISOString(),
-    repairsCount: 0,
+    repairsCount,
     totalSpent,
   };
 }
@@ -43,22 +49,26 @@ export async function listCustomers(session: StaffSession, q?: string): Promise<
     ? or(ilike(customersTable.name, `%${s}%`), digits.length >= 2 ? ilike(customersTable.phone, `%${digits}%`) : undefined)
     : undefined;
   const rows = await db
-    .select({ row: customersTable, spent: spentSql })
+    .select({ row: customersTable, spent: spentSql, repairs: repairsCountSql })
     .from(customersTable)
     .where(filter)
     .orderBy(desc(customersTable.createdAt))
     .limit(500);
-  return rows.map((r) => toCustomer(r.row, r.spent));
+  return rows.map((r) => toCustomer(r.row, canSeeMoney(session) ? r.spent : 0, r.repairs));
 }
 
 export async function getCustomer(session: StaffSession, id: string): Promise<{ customer: Customer; repairs: Repair[]; sales: Sale[] }> {
   assertCan(session, { customer: ["read"] });
-  const [r] = await db.select({ row: customersTable, spent: spentSql }).from(customersTable).where(eq(customersTable.id, id)).limit(1);
+  const [r] = await db.select({ row: customersTable, spent: spentSql, repairs: repairsCountSql }).from(customersTable).where(eq(customersTable.id, id)).limit(1);
   if (!r) throw notFound("Client");
   // Sales history needs sale:read (technicians see the customer, not the money).
   const canSeeSales = can(session, { sale: ["read"] });
   const history = canSeeSales ? await loadSales(db, eq(sales.customerId, id)) : [];
-  return { customer: toCustomer(r.row, canSeeSales ? r.spent : 0), repairs: [], sales: history };
+  return {
+    customer: toCustomer(r.row, canSeeMoney(session) ? r.spent : 0, r.repairs),
+    repairs: await repairsOfCustomer(session, id),
+    sales: history,
+  };
 }
 
 export async function saveCustomer(session: StaffSession, input: CustomerInput, id?: string): Promise<Customer> {
@@ -92,6 +102,6 @@ export async function saveCustomer(session: StaffSession, input: CustomerInput, 
 }
 
 async function listOne(id: string) {
-  const [r] = await db.select({ row: customersTable, spent: spentSql }).from(customersTable).where(eq(customersTable.id, id)).limit(1);
-  return r ? toCustomer(r.row, r.spent) : null;
+  const [r] = await db.select({ row: customersTable, spent: spentSql, repairs: repairsCountSql }).from(customersTable).where(eq(customersTable.id, id)).limit(1);
+  return r ? toCustomer(r.row, r.spent, r.repairs) : null;
 }
